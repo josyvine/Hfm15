@@ -56,12 +56,12 @@ public class FileUtils {
     }
 
     /**
-     * NEW: Batch deletion method for Enhancement 4.
-     * Deletes a list of files efficiently by batching the database operation.
+     * UPDATED: Batch deletion method for Enhancement 4 and Toast Count Fix.
+     * Deletes a list of files efficiently by batching the database operation and returning the accurate count.
      *
      * @param context The application context.
      * @param files   The list of files to be deleted.
-     * @return The number of files successfully deleted.
+     * @return The number of files successfully removed from the filesystem.
      */
     public static int deleteFileBatch(Context context, List<File> files) {
         if (files == null || files.isEmpty()) return 0;
@@ -69,7 +69,7 @@ public class FileUtils {
         int deletedCount = 0;
         ContentResolver resolver = context.getContentResolver();
         
-        // 1. Prepare bulk SQL query: WHERE _data IN (?, ?, ?, ...)
+        // 1. Prepare bulk SQL query: WHERE _data IN (?, ?, ?, ...) for speed
         StringBuilder where = new StringBuilder(MediaStore.Files.FileColumns.DATA + " IN (");
         String[] selectionArgs = new String[files.size()];
         
@@ -80,17 +80,22 @@ public class FileUtils {
         }
         where.append(")");
 
-        // 2. Execute bulk delete on MediaStore
+        // 2. Execute bulk delete on MediaStore to clear database entries first
         try {
             resolver.delete(MediaStore.Files.getContentUri("external"), where.toString(), selectionArgs);
         } catch (Exception e) {
-            Log.e(TAG, "Bulk MediaStore delete failed", e);
+            Log.e(TAG, "Bulk MediaStore database delete failed", e);
         }
 
-        // 3. Physically delete the files from storage
+        // 3. Physically delete the files from the storage drive
         for (File file : files) {
-            if (file.exists() && file.delete()) {
-                deletedCount++;
+            if (file.exists()) {
+                if (file.delete()) {
+                    deletedCount++;
+                } else {
+                    // Fallback: If standard delete fails, trigger a scan to let the system know it should be gone
+                    context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
+                }
             }
         }
         return deletedCount;
