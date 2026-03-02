@@ -83,7 +83,6 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
     private SearchAdapter adapter;
     private GridLayoutManager gridLayoutManager;
     
-    // Logic for Expansion/Collapse
     private List<Object> masterList = new ArrayList<>();
     private List<Object> displayList = new ArrayList<>();
     
@@ -116,7 +115,7 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
     public static class DateHeader {
         private final String dateString;
         private boolean isChecked;
-        private boolean isExpanded; // NEW Logic Support
+        private boolean isExpanded; 
 
         public DateHeader(String dateString) {
             this.dateString = dateString;
@@ -124,11 +123,25 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
             this.isExpanded = true; 
         }
 
-        public String getDateString() { return dateString; }
-        public boolean isChecked() { return isChecked; }
-        public void setChecked(boolean checked) { isChecked = checked; }
-        public boolean isExpanded() { return isExpanded; }
-        public void setExpanded(boolean expanded) { isExpanded = expanded; }
+        public String getDateString() {
+            return dateString;
+        }
+
+        public boolean isChecked() {
+            return isChecked;
+        }
+
+        public void setChecked(boolean checked) {
+            isChecked = checked;
+        }
+        
+        public boolean isExpanded() {
+            return isExpanded;
+        }
+
+        public void setExpanded(boolean expanded) {
+            isExpanded = expanded;
+        }
     }
 
     @Override
@@ -819,7 +832,7 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
 			.setPositiveButton("Delete All", new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
-					// Enhancement 4 Logic: Batch size selection
+					// UPDATED: Enhancement 4 Logic - Select Batch size
                     final String[] batchOptions = {"1 (Single)", "5 at a time", "10 at a time", "20 at a time", "30 at a time"};
                     final int[] batchValues = {1, 5, 10, 20, 30};
 
@@ -836,7 +849,7 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
             .setNeutralButton("Move to Recycle", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                    // Enhancement 2 Logic: Recycle choice
+                    // UPDATED: Enhancement 2 Logic - Choose Bin
                     AlertDialog.Builder binBuilder = new AlertDialog.Builder(SearchActivity.this);
                     binBuilder.setTitle("Choose Recycle Bin");
                     binBuilder.setItems(new CharSequence[]{"Phone Recycle Bin", "SD Card Recycle Bin"}, new DialogInterface.OnClickListener() {
@@ -1104,7 +1117,6 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
         deleteCompletionReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                // FIXED Logic: Read count extra
                 int deletedCount = intent.getIntExtra(DeleteService.EXTRA_DELETED_COUNT, 0);
                 Toast.makeText(SearchActivity.this, "Deletion complete. " + deletedCount + " files removed.", Toast.LENGTH_LONG).show();
 
@@ -1229,8 +1241,8 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
                     binBuilder.setTitle("Choose Recycle Bin");
                     binBuilder.setItems(new CharSequence[]{"Phone Recycle Bin", "SD Card Recycle Bin"}, new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialogInterface, int which) {
-                            moveToRecycleBin(selectedResults, which == 1);
+                        public void onClick(DialogInterface dialogInterface, int whichBin) {
+                            moveToRecycleBin(selectedResults, whichBin == 1);
                         }
                     });
                     binBuilder.show();
@@ -1417,9 +1429,7 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
         protected List<SearchResult> doInBackground(Void... voids) {
             File recycleBinDir = new File(Environment.getExternalStorageDirectory(), "HFMRecycleBin");
             if (!recycleBinDir.exists() && !useSdCardBin) {
-                if (!recycleBinDir.mkdir()) {
-                    return new ArrayList<>();
-                }
+                if (!recycleBinDir.mkdir()) return new ArrayList<>();
             }
 
             List<SearchResult> movedResults = new ArrayList<>();
