@@ -46,7 +46,7 @@ public class RecycleBinAdapter extends RecyclerView.Adapter<RecycleBinAdapter.Vi
         holder.checkBox.setVisibility(View.GONE);
 
         if (file.isDirectory()) {
-            holder.fileIcon.setImageResource(android.R.drawable.ic_menu_myplaces);
+            holder.fileIcon.setImageResource(R.drawable.ic_folder_modern);
         } else {
             holder.fileIcon.setImageResource(getIconForFileType(file.getName()));
         }
@@ -102,4 +102,3 @@ public class RecycleBinAdapter extends RecyclerView.Adapter<RecycleBinAdapter.Vi
         return android.R.drawable.ic_menu_info_details;
     }
 }
-
