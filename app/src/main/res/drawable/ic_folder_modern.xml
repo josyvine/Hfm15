@@ -4,19 +4,19 @@
     android:height="48dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    
-    <!-- Back flap of the folder (Darker Yellow) -->
+
+    <!-- Folder Body/Back -->
     <path
-        android:fillColor="#FFB300"
+        android:fillColor="#FFC107"
         android:pathData="M10,4H4C2.9,4 2.01,4.9 2.01,6L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z"/>
-        
-    <!-- Front flap of the folder (Lighter Yellow) -->
+
+    <!-- Folder Front Flap -->
     <path
         android:fillColor="#FFCA28"
-        android:pathData="M2,8l0,10c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8H2z"/>
-        
-    <!-- Subtle highlight/shadow for modern depth effect -->
+        android:pathData="M2,18V8h20v10c0,1.1 -0.9,2 -2,2H4C2.9,20 2,19.1 2,18z"/>
+
+    <!-- Top Highlight line -->
     <path
-        android:fillColor="#FFE082"
+        android:fillColor="#FFD54F"
         android:pathData="M2,8h20v1H2z"/>
 </vector>
