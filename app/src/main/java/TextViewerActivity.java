@@ -280,8 +280,16 @@ public class TextViewerActivity extends Activity {
 						case 3: // Hide
 							hideFile();
 							break;
-						case 4: // Move to Recycle
-							moveToRecycleBin();
+						case 4: // Move to Recycle Bin (Dual Logic)
+                            AlertDialog.Builder binBuilder = new AlertDialog.Builder(TextViewerActivity.this);
+                            binBuilder.setTitle("Choose Recycle Bin");
+                            binBuilder.setItems(new CharSequence[]{"Phone Recycle Bin", "SD Card Recycle Bin"}, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int whichBin) {
+                                    moveToRecycleBin(whichBin == 1);
+                                }
+                            });
+                            binBuilder.show();
 							break;
 						case 5: // Delete
 							performFileDeletion();
@@ -447,7 +455,7 @@ public class TextViewerActivity extends Activity {
         finish();
     }
 
-    private void moveToRecycleBin() {
+    private void moveToRecycleBin(boolean useSdCardBin) {
         if (filePath == null) {
             Toast.makeText(this, "Error: File path is missing.", Toast.LENGTH_SHORT).show();
             return;
@@ -458,30 +466,58 @@ public class TextViewerActivity extends Activity {
             return;
         }
 
-        File recycleBinDir = new File(Environment.getExternalStorageDirectory(), "HFMRecycleBin");
-        if (!recycleBinDir.exists()) {
-            if (!recycleBinDir.mkdir()) {
-                Toast.makeText(this, "Failed to create Recycle Bin folder.", Toast.LENGTH_SHORT).show();
-                return;
+        boolean moveSuccess = false;
+
+        if (useSdCardBin && StorageUtils.isFileOnSdCard(this, sourceFile)) {
+            // Enhancement 2: SD Card SAF Move
+            if (StorageUtils.moveFileOnSdCardSafely(this, sourceFile)) {
+                moveSuccess = true;
+            } else {
+                Toast.makeText(this, "SD Card move failed. Using fallback.", Toast.LENGTH_SHORT).show();
             }
         }
 
-        File destFile = new File(recycleBinDir, sourceFile.getName());
-        if (destFile.exists()) {
-            String name = sourceFile.getName();
-            String extension = "";
-            int dotIndex = name.lastIndexOf(".");
-            if (dotIndex > 0) {
-                extension = name.substring(dotIndex);
-                name = name.substring(0, dotIndex);
+        if (!moveSuccess) {
+            // Move to Phone Bin
+            File recycleBinDir = new File(Environment.getExternalStorageDirectory(), "HFMRecycleBin");
+            if (!recycleBinDir.exists()) {
+                if (!recycleBinDir.mkdir()) {
+                    Toast.makeText(this, "Failed to create Recycle Bin folder.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
             }
-            destFile = new File(recycleBinDir, name + "_" + System.currentTimeMillis() + extension);
+
+            File destFile = new File(recycleBinDir, sourceFile.getName());
+            if (destFile.exists()) {
+                String name = sourceFile.getName();
+                String extension = "";
+                int dotIndex = name.lastIndexOf(".");
+                if (dotIndex > 0) {
+                    extension = name.substring(dotIndex);
+                    name = name.substring(0, dotIndex);
+                }
+                destFile = new File(recycleBinDir, name + "_" + System.currentTimeMillis() + extension);
+            }
+
+            if (sourceFile.renameTo(destFile)) {
+                moveSuccess = true;
+                sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(destFile)));
+            } else {
+                // Fallback copy-delete
+                if (StorageUtils.copyFile(this, sourceFile, destFile)) {
+                    if (StorageUtils.deleteFile(this, sourceFile)) {
+                        moveSuccess = true;
+                        sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(destFile)));
+                    } else {
+                        destFile.delete();
+                    }
+                }
+            }
         }
 
-        if (sourceFile.renameTo(destFile)) {
+        if (moveSuccess) {
             Toast.makeText(this, "File moved to Recycle Bin.", Toast.LENGTH_SHORT).show();
             sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(sourceFile)));
-            sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(destFile)));
             Intent resultIntent = new Intent();
             resultIntent.putExtra(RESULT_FILE_DELETED, true);
             setResult(Activity.RESULT_OK, resultIntent);
@@ -507,6 +543,7 @@ public class TextViewerActivity extends Activity {
 
         Intent intent = new Intent(this, DeleteService.class);
         intent.putStringArrayListExtra(DeleteService.EXTRA_FILES_TO_DELETE, filesToDelete);
+        intent.putExtra("batch_size", 1); // Enhancement 4: batch size 1
         ContextCompat.startForegroundService(this, intent);
     }
 
