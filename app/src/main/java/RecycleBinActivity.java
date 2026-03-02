@@ -23,6 +23,7 @@ import java.util.List;
 public class RecycleBinActivity extends Activity {
 
     private static final String RECYCLE_BIN_FOLDER_NAME = "HFMRecycleBin";
+    private static final String SD_RECYCLE_BIN_FOLDER_NAME = ".HFMRecycleBin";
 
     private ImageButton backButton;
     private TextView titleTextView;
@@ -31,7 +32,8 @@ public class RecycleBinActivity extends Activity {
 
     private File currentDirectory;
     private final File rootStorageDir = Environment.getExternalStorageDirectory();
-    private final File recycleBinDir = new File(rootStorageDir, RECYCLE_BIN_FOLDER_NAME);
+    private final File phoneRecycleBinDir = new File(rootStorageDir, RECYCLE_BIN_FOLDER_NAME);
+    private File sdCardRecycleBinDir = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,13 +43,19 @@ public class RecycleBinActivity extends Activity {
 
         initializeViews();
         setupListeners();
+        
+        // Identify SD Card Recycle Bin path
+        String sdCardPath = StorageUtils.getSdCardPath(this);
+        if (sdCardPath != null) {
+            sdCardRecycleBinDir = new File(sdCardPath, SD_RECYCLE_BIN_FOLDER_NAME);
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Always start by showing the root directory containing the recycle bin
-        currentDirectory = rootStorageDir;
+        // Always start by showing the root view which lists available bins
+        currentDirectory = null; 
         refreshList();
     }
 
@@ -70,47 +78,65 @@ public class RecycleBinActivity extends Activity {
 
     private void refreshList() {
         createRecycleBinIfNeeded();
-        listFiles(currentDirectory);
+        if (currentDirectory == null) {
+            listRootBins();
+        } else {
+            listFiles(currentDirectory);
+        }
     }
 
     private void createRecycleBinIfNeeded() {
-        if (!recycleBinDir.exists()) {
-            if (recycleBinDir.mkdir()) {
-                // Folder created successfully
-            } else {
-                Toast.makeText(this, "Failed to create Recycle Bin folder.", Toast.LENGTH_SHORT).show();
-            }
+        if (!phoneRecycleBinDir.exists()) {
+            phoneRecycleBinDir.mkdir();
         }
+        // We don't force create SD bin here; it's created on demand when moving files
+    }
+
+    // New method to show the top-level "Phone Bin" and "SD Card Bin" folders
+    private void listRootBins() {
+        titleTextView.setText("Recycle Bins");
+        List<File> binList = new ArrayList<>();
+        
+        // Always add Phone Bin
+        if (phoneRecycleBinDir.exists()) {
+            binList.add(phoneRecycleBinDir);
+        }
+        
+        // Add SD Card Bin if it exists
+        if (sdCardRecycleBinDir != null && sdCardRecycleBinDir.exists()) {
+            binList.add(sdCardRecycleBinDir);
+        }
+        
+        setupAdapter(binList);
     }
 
     private void listFiles(File directory) {
         currentDirectory = directory;
-
-        if (directory.equals(rootStorageDir)) {
-            // We are at the root, so we only want to show the recycle bin folder
-            titleTextView.setText("Recycle Bin");
-            List<File> singleFolderList = new ArrayList<>();
-            if (recycleBinDir.exists()) {
-                singleFolderList.add(recycleBinDir);
-            }
-            setupAdapter(singleFolderList);
+        
+        // Display readable name
+        if (directory.equals(phoneRecycleBinDir)) {
+            titleTextView.setText("Phone Recycle Bin");
+        } else if (directory.equals(sdCardRecycleBinDir)) {
+            titleTextView.setText("SD Card Recycle Bin");
         } else {
-            // We are inside the recycle bin folder
             titleTextView.setText(directory.getName());
-            File[] files = directory.listFiles();
-            List<File> fileList = new ArrayList<>();
-            if (files != null) {
-                fileList.addAll(Arrays.asList(files));
-            }
-            // Sort files alphabetically
-            Collections.sort(fileList, new Comparator<File>() {
-					@Override
-					public int compare(File f1, File f2) {
-						return f1.getName().compareToIgnoreCase(f2.getName());
-					}
-				});
-            setupAdapter(fileList);
         }
+
+        File[] files = directory.listFiles();
+        List<File> fileList = new ArrayList<>();
+        if (files != null) {
+            fileList.addAll(Arrays.asList(files));
+        }
+        
+        // Sort files alphabetically
+        Collections.sort(fileList, new Comparator<File>() {
+            @Override
+            public int compare(File f1, File f2) {
+                return f1.getName().compareToIgnoreCase(f2.getName());
+            }
+        });
+        
+        setupAdapter(fileList);
     }
 
     private void setupAdapter(List<File> files) {
@@ -128,30 +154,36 @@ public class RecycleBinActivity extends Activity {
 					if (file.isDirectory()) {
 						listFiles(file);
 					} else {
-						Toast.makeText(RecycleBinActivity.this, "Cannot open files here. Restore feature coming soon.", Toast.LENGTH_SHORT).show();
+						Toast.makeText(RecycleBinActivity.this, "Cannot open deleted files. Restore feature coming soon.", Toast.LENGTH_SHORT).show();
 					}
 				}
 
 				@Override
 				public void onItemLongClick(File file) {
-					if (file.equals(recycleBinDir)) {
+                    // Allow emptying the specific bin folder from the root view
+					if (file.equals(phoneRecycleBinDir) || file.equals(sdCardRecycleBinDir)) {
 						showDeleteConfirmationDialog(file);
 					} else {
-						Toast.makeText(RecycleBinActivity.this, "Long press to empty the entire bin from the main view.", Toast.LENGTH_SHORT).show();
+                        // Allow deleting individual items inside the bin
+                        showDeleteConfirmationDialog(file);
 					}
 				}
 			});
         recyclerView.setAdapter(adapter);
     }
 
-    private void showDeleteConfirmationDialog(final File folder) {
+    private void showDeleteConfirmationDialog(final File fileOrFolder) {
+        String message = fileOrFolder.isDirectory() ? 
+            "Empty this Recycle Bin? All files inside will be permanently deleted." : 
+            "Permanently delete this file?";
+
         new AlertDialog.Builder(this)
-			.setTitle("Empty Recycle Bin")
-			.setMessage("Are you sure you want to permanently empty the recycle bin? All files inside will be deleted forever.")
-			.setPositiveButton("Empty", new DialogInterface.OnClickListener() {
+			.setTitle("Confirm Deletion")
+			.setMessage(message)
+			.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
-					deleteRecursive(folder);
+					deleteRecursive(fileOrFolder);
 					refreshList();
 				}
 			})
@@ -167,17 +199,22 @@ public class RecycleBinActivity extends Activity {
                     deleteRecursive(child);
                 }
             }
+            // Don't delete the root bin folders themselves, just their contents
+            if (!fileOrDirectory.equals(phoneRecycleBinDir) && !fileOrDirectory.equals(sdCardRecycleBinDir)) {
+                StorageUtils.deleteFile(this, fileOrDirectory);
+            }
+        } else {
+            StorageUtils.deleteFile(this, fileOrDirectory);
         }
-        fileOrDirectory.delete();
     }
 
     private void handleBackNavigation() {
-        if (currentDirectory != null && !currentDirectory.equals(rootStorageDir)) {
-            File parent = currentDirectory.getParentFile();
-            if (parent != null) {
-                listFiles(parent);
-            }
+        if (currentDirectory != null) {
+            // If inside a bin, go back to root list
+            currentDirectory = null;
+            listRootBins();
         } else {
+            // If at root list, exit
             finish();
         }
     }
@@ -187,4 +224,3 @@ public class RecycleBinActivity extends Activity {
         handleBackNavigation();
     }
 }
-
