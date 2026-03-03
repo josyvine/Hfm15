@@ -33,6 +33,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
@@ -41,8 +42,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.widget.EditText;
-
 
 import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -714,13 +713,6 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
         }
         return params;
     }
-
-    private long getStartOfToday() { Calendar c = Calendar.getInstance(); c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); return c.getTimeInMillis() / 1000; }
-    private long getEndOfToday() { Calendar c = Calendar.getInstance(); c.set(Calendar.HOUR_OF_DAY, 23); c.set(Calendar.MINUTE, 59); c.set(Calendar.SECOND, 59); return c.getTimeInMillis() / 1000; }
-    private long getStartOfYesterday() { return getStartOfDaysAgo(1); }
-    private long getEndOfYesterday() { return getEndOfDaysAgo(1); }
-    private long getStartOfDaysAgo(int days) { Calendar c = Calendar.getInstance(); c.add(Calendar.DATE, -days); c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); return c.getTimeInMillis() / 1000; }
-    private long getEndOfDaysAgo(int days) { Calendar c = Calendar.getInstance(); c.add(Calendar.DATE, -days); c.set(Calendar.HOUR_OF_DAY, 23); c.set(Calendar.MINUTE, 59); c.set(Calendar.SECOND, 59); return c.getTimeInMillis() / 1000; }
 
     private void fetchFolderSuggestions(final String constraint) {
         new Thread(new Runnable() {
@@ -1493,10 +1485,6 @@ public class SearchActivity extends Activity implements SearchAdapter.OnItemClic
         }
         Collections.sort(siblingFiles);
         return siblingFiles;
-    }
-
-    private void moveToRecycleBin(List<SearchResult> resultsToMove, boolean useSdCardBin) {
-        new MoveToRecycleTask(resultsToMove, useSdCardBin).execute();
     }
 
     private class MoveToRecycleTask extends AsyncTask<Void, Void, List<SearchResult>> {
