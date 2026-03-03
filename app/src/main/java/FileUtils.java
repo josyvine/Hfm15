@@ -66,7 +66,6 @@ public class FileUtils {
     public static int deleteFileBatch(Context context, List<File> files) {
         if (files == null || files.isEmpty()) return 0;
 
-        int deletedCount = 0;
         ContentResolver resolver = context.getContentResolver();
         
         // 1. Prepare bulk SQL query: WHERE _data IN (?, ?, ?, ...) for speed
@@ -81,23 +80,31 @@ public class FileUtils {
         where.append(")");
 
         // 2. Execute bulk delete on MediaStore to clear database entries first
+        int mediaStoreDeletedCount = 0;
         try {
-            resolver.delete(MediaStore.Files.getContentUri("external"), where.toString(), selectionArgs);
+            // UPDATE: Track how many rows the OS successfully deleted from the database
+            mediaStoreDeletedCount = resolver.delete(MediaStore.Files.getContentUri("external"), where.toString(), selectionArgs);
         } catch (Exception e) {
             Log.e(TAG, "Bulk MediaStore database delete failed", e);
         }
 
         // 3. Physically delete the files from the storage drive
+        int physicalDeletedCount = 0;
         for (File file : files) {
             if (file.exists()) {
                 if (file.delete()) {
-                    deletedCount++;
+                    physicalDeletedCount++;
                 } else {
                     // Fallback: If standard delete fails, trigger a scan to let the system know it should be gone
                     context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
                 }
+            } else {
+                // UPDATE: If it no longer physically exists, it was successfully removed by the OS/MediaStore earlier
+                physicalDeletedCount++;
             }
         }
-        return deletedCount;
+        
+        // UPDATE: Return the maximum of either the DB clearance or physical clearance to fix the "0 files removed" Scoped Storage bug
+        return Math.max(mediaStoreDeletedCount, physicalDeletedCount);
     }
 }
