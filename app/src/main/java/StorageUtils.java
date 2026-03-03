@@ -99,7 +99,7 @@ public class StorageUtils {
 
         // Try standard delete first (works for Internal)
         if (file.delete()) {
-            context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
+            // REMOVED: context.sendBroadcast(...) to prevent system lockup
             return true;
         }
 
@@ -108,8 +108,7 @@ public class StorageUtils {
             DocumentFile docFile = getDocumentFile(context, file, false);
             if (docFile != null && docFile.exists()) {
                 if (docFile.delete()) {
-                    // CRITICAL: Broadcast removal so MediaStore knows it's gone immediately
-                    context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
+                    // REMOVED: context.sendBroadcast(...) to prevent system lockup
                     return true;
                 }
             }
@@ -223,7 +222,6 @@ public class StorageUtils {
             out = getOutputStream(context, destination);
             if (out == null) return false;
 
-            // Updated buffer to 128KB for speed
             byte[] buf = new byte[131072]; 
             int len;
             while ((len = in.read(buf)) > 0) {
@@ -253,13 +251,11 @@ public class StorageUtils {
         return recycleBin;
     }
 
-    // UPDATE: Overloaded method to accept the cached Recycle Bin DocumentFile to stop SAF lookup loop lag
     public static boolean moveFileOnSdCardSafely(Context context, File sourceFile, DocumentFile recycleBinDoc) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             try {
                 DocumentFile sourceDoc = getDocumentFile(context, sourceFile, false);
                 if (sourceDoc != null && recycleBinDoc != null) {
-                    // Try native atomic move first
                     try {
                         Uri movedUri = DocumentsContract.moveDocument(context.getContentResolver(), 
                                 sourceDoc.getUri(), sourceDoc.getParentFile().getUri(), recycleBinDoc.getUri());
@@ -267,8 +263,6 @@ public class StorageUtils {
                     } catch (Exception e) {
                         Log.w(TAG, "Native moveDocument failed, attempting rename fallback", e);
                     }
-                    
-                    // Fallback: If on same volume, renameTo might work if folders are aligned
                     if (sourceDoc.renameTo(sourceFile.getName())) {
                         return true; 
                     }
