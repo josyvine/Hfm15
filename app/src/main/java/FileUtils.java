@@ -69,6 +69,7 @@ public class FileUtils {
         ContentResolver resolver = context.getContentResolver();
         
         // 1. Prepare bulk SQL query: WHERE _data IN (?, ?, ?, ...) for speed
+        // This prevents executing hundreds of individual SQL queries.
         StringBuilder where = new StringBuilder(MediaStore.Files.FileColumns.DATA + " IN (");
         String[] selectionArgs = new String[files.size()];
         
@@ -88,14 +89,16 @@ public class FileUtils {
             Log.e(TAG, "Bulk MediaStore database delete failed", e);
         }
 
-        // 3. Physically delete the files from the storage drive
+        // 3. Check physical files and clean up stragglers
         int physicalDeletedCount = 0;
         for (File file : files) {
             if (file.exists()) {
+                // If it still exists after DB delete, try physical delete
                 if (file.delete()) {
                     physicalDeletedCount++;
                 } else {
                     // Fallback: If standard delete fails, trigger a scan to let the system know it should be gone
+                    // This is only sent if the file is stubborn, preventing spam.
                     context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
                 }
             } else {
@@ -104,7 +107,8 @@ public class FileUtils {
             }
         }
         
-        // UPDATE: Return the maximum of either the DB clearance or physical clearance to fix the "0 files removed" Scoped Storage bug
+        // UPDATE: Return the maximum of either the DB clearance or physical clearance 
+        // This fixes the "0 files removed" bug on Android 11+ Scoped Storage
         return Math.max(mediaStoreDeletedCount, physicalDeletedCount);
     }
 }
