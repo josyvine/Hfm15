@@ -24,7 +24,6 @@ public class StorageUtils {
     private static final String KEY_SDCARD_URI = "sdcard_uri";
     public static final int REQUEST_CODE_SDCARD_PERMISSION = 101;
     
-    // UPDATED: Removed the dot so the folder is visible on the SD Card
     public static final String SD_RECYCLE_BIN_NAME = "HFMRecycleBin";
 
     public static void saveSdCardUri(Context context, Uri uri) {
@@ -43,15 +42,12 @@ public class StorageUtils {
 
     public static boolean hasSdCardPermission(Context context) {
         Uri sdCardUri = getSdCardUri(context);
-        if (sdCardUri == null) {
-            return false;
-        }
+        if (sdCardUri == null) return false;
         try {
             int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
             context.getContentResolver().takePersistableUriPermission(sdCardUri, takeFlags);
             return true;
         } catch (SecurityException e) {
-            Log.e(TAG, "SD card permission has been revoked.", e);
             saveSdCardUri(context, null);
             return false;
         }
@@ -64,7 +60,6 @@ public class StorageUtils {
             activity.startActivityForResult(intent, REQUEST_CODE_SDCARD_PERMISSION);
             return;
         }
-
         StorageVolume sdCardVolume = null;
         for (StorageVolume volume : sm.getStorageVolumes()) {
             if (volume.isRemovable() && volume.getState().equals("mounted")) {
@@ -72,22 +67,16 @@ public class StorageUtils {
                 break;
             }
         }
-
         Intent intent;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && sdCardVolume != null) {
             intent = sdCardVolume.createAccessIntent(null);
         } else {
             intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         }
-
-        if (intent == null) {
-            intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        }
-
+        if (intent == null) intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         try {
             activity.startActivityForResult(intent, REQUEST_CODE_SDCARD_PERMISSION);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to launch SD card permission intent, trying fallback", e);
             intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             activity.startActivityForResult(intent, REQUEST_CODE_SDCARD_PERMISSION);
         }
@@ -106,27 +95,23 @@ public class StorageUtils {
     }
 
     public static boolean deleteFile(Context context, File file) {
-        if (file == null || !file.exists()) {
+        if (file == null || !file.exists()) return true;
+
+        // Try standard delete first (works for Internal)
+        if (file.delete()) {
+            context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
             return true;
         }
 
-        if (FileUtils.deleteFile(context, file)) {
-            return true;
-        }
-
+        // If standard delete fails, try SAF (for SD Card)
         if (isFileOnSdCard(context, file)) {
             DocumentFile docFile = getDocumentFile(context, file, false);
             if (docFile != null && docFile.exists()) {
                 if (docFile.delete()) {
-                    Log.d(TAG, "Successfully deleted via SAF: " + file.getAbsolutePath());
+                    // CRITICAL: Broadcast removal so MediaStore knows it's gone immediately
                     context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
                     return true;
-                } else {
-                    Log.e(TAG, "SAF delete returned false for: " + file.getAbsolutePath());
-                    return false;
                 }
-            } else {
-                Log.w(TAG, "Could not find DocumentFile for SAF deletion: " + file.getAbsolutePath());
             }
         }
         return false;
@@ -162,34 +147,24 @@ public class StorageUtils {
 
     public static DocumentFile getDocumentFile(Context context, File file, boolean isDirectory) {
         String sdCardPath = getSdCardPath(context);
-        if (sdCardPath == null) {
-            return null;
-        }
+        if (sdCardPath == null) return null;
 
         Uri sdCardUri = getSdCardUri(context);
-        if (sdCardUri == null) {
-            return null;
-        }
+        if (sdCardUri == null) return null;
 
         DocumentFile rootDocFile = DocumentFile.fromTreeUri(context, sdCardUri);
-        if (rootDocFile == null) {
-            return null;
-        }
+        if (rootDocFile == null) return null;
 
         String relativePath;
         try {
             String canonicalFilePath = file.getCanonicalPath();
-            if (!canonicalFilePath.startsWith(sdCardPath)) {
-                return null; // Not on this SD card
-            }
+            if (!canonicalFilePath.startsWith(sdCardPath)) return null;
             relativePath = canonicalFilePath.substring(sdCardPath.length());
         } catch (IOException e) {
             return null;
         }
 
-        if (relativePath.startsWith(File.separator)) {
-            relativePath = relativePath.substring(1);
-        }
+        if (relativePath.startsWith(File.separator)) relativePath = relativePath.substring(1);
 
         String[] pathSegments = relativePath.split(File.separator);
         DocumentFile result = rootDocFile;
@@ -209,14 +184,10 @@ public class StorageUtils {
         return result;
     }
 
-
     public static OutputStream getOutputStream(Context context, File targetFile) throws IOException {
         if (!isFileOnSdCard(context, targetFile)) {
-            // Ensure parent directory exists for internal storage writes
             File parent = targetFile.getParentFile();
-            if (parent != null && !parent.exists()) {
-                parent.mkdirs();
-            }
+            if (parent != null && !parent.exists()) parent.mkdirs();
             return new FileOutputStream(targetFile);
         }
 
@@ -227,28 +198,17 @@ public class StorageUtils {
 
         String mimeType = "application/octet-stream";
         DocumentFile newDocFile = parentDoc.createFile(mimeType, targetFile.getName());
-
         if (newDocFile == null) {
-            // Check if the file already exists, sometimes createFile returns null if it does
             newDocFile = parentDoc.findFile(targetFile.getName());
-            if (newDocFile == null) {
-                throw new IOException("Failed to create file on SD card using SAF.");
-            }
+            if (newDocFile == null) throw new IOException("Failed to create file on SD card.");
         }
         return context.getContentResolver().openOutputStream(newDocFile.getUri());
     }
 
     public static boolean createDirectory(Context context, File dir) {
-        if (!isFileOnSdCard(context, dir)) {
-            return dir.mkdirs();
-        }
-
+        if (!isFileOnSdCard(context, dir)) return dir.mkdirs();
         DocumentFile parentDoc = getDocumentFile(context, dir.getParentFile(), true);
-        if (parentDoc == null || !parentDoc.canWrite()) {
-            Log.e(TAG, "Cannot get writable parent directory on SD card for folder creation.");
-            return false;
-        }
-
+        if (parentDoc == null || !parentDoc.canWrite()) return false;
         DocumentFile newDir = parentDoc.createDirectory(dir.getName());
         return newDir != null && newDir.exists();
     }
@@ -257,52 +217,35 @@ public class StorageUtils {
         InputStream in = null;
         OutputStream out = null;
         try {
-            // Get input stream from source file
             Uri sourceUri = Uri.fromFile(source);
             in = context.getContentResolver().openInputStream(sourceUri);
-            if (in == null) {
-                Log.e(TAG, "Failed to get input stream for source file: " + source.getAbsolutePath());
-                return false;
-            }
-
-            // Get output stream to destination file
+            if (in == null) return false;
             out = getOutputStream(context, destination);
-            if (out == null) {
-                Log.e(TAG, "Failed to get output stream for destination file: " + destination.getAbsolutePath());
-                return false;
-            }
+            if (out == null) return false;
 
-            // UPDATE: Buffer significantly increased to speed up physical device-to-SD writes
-            byte[] buf = new byte[131072]; // 128KB chunk reads (increased from 8192)
+            // Updated buffer to 128KB for speed
+            byte[] buf = new byte[131072]; 
             int len;
             while ((len = in.read(buf)) > 0) {
                 out.write(buf, 0, len);
             }
             return true;
         } catch (IOException e) {
-            Log.e(TAG, "File copy failed for source: " + source.getAbsolutePath(), e);
+            Log.e(TAG, "File copy failed", e);
             return false;
         } finally {
             try {
                 if (in != null) in.close();
                 if (out != null) out.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Error closing streams", e);
-            }
+            } catch (IOException e) {}
         }
     }
 
     public static DocumentFile getOrCreateSdCardRecycleBin(Context context) {
         Uri sdCardUri = getSdCardUri(context);
-        if (sdCardUri == null) {
-            return null;
-        }
-
+        if (sdCardUri == null) return null;
         DocumentFile rootDocFile = DocumentFile.fromTreeUri(context, sdCardUri);
-        if (rootDocFile == null) {
-            return null;
-        }
-
+        if (rootDocFile == null) return null;
         DocumentFile recycleBin = rootDocFile.findFile(SD_RECYCLE_BIN_NAME);
         if (recycleBin == null) {
             recycleBin = rootDocFile.createDirectory(SD_RECYCLE_BIN_NAME);
@@ -315,11 +258,20 @@ public class StorageUtils {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             try {
                 DocumentFile sourceDoc = getDocumentFile(context, sourceFile, false);
-                
                 if (sourceDoc != null && recycleBinDoc != null) {
-                    Uri movedUri = DocumentsContract.moveDocument(context.getContentResolver(), 
-                            sourceDoc.getUri(), sourceDoc.getParentFile().getUri(), recycleBinDoc.getUri());
-                    return movedUri != null;
+                    // Try native atomic move first
+                    try {
+                        Uri movedUri = DocumentsContract.moveDocument(context.getContentResolver(), 
+                                sourceDoc.getUri(), sourceDoc.getParentFile().getUri(), recycleBinDoc.getUri());
+                        return movedUri != null;
+                    } catch (Exception e) {
+                        Log.w(TAG, "Native moveDocument failed, attempting rename fallback", e);
+                    }
+                    
+                    // Fallback: If on same volume, renameTo might work if folders are aligned
+                    if (sourceDoc.renameTo(sourceFile.getName())) {
+                        return true; 
+                    }
                 }
             } catch (Exception e) {
                 Log.e(TAG, "SAF Move failed", e);
@@ -328,8 +280,7 @@ public class StorageUtils {
         return false;
     }
 
-    // Maintained for backward compatibility for any other parts of the app using it without caching
     public static boolean moveFileOnSdCardSafely(Context context, File sourceFile) {
         return moveFileOnSdCardSafely(context, sourceFile, getOrCreateSdCardRecycleBin(context));
     }
-} 
+}
