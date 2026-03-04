@@ -96,7 +96,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
     private List<MassDeleteAdapter.SearchResult> mResultsPendingPermission;
     private Runnable mPendingOperation;
 
-    // Variables for Android 11+ Bulk Delete Permission Flow
     private ArrayList<String> mPendingFilePathsToDelete;
     private int mPendingBatchSize;
 
@@ -269,7 +268,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
             MediaStore.Files.FileColumns.DISPLAY_NAME
         };
 
-        // FIXED: Pagination logic to prevent CursorWindow overflow
         final int pageSize = 2000;
         int offset = 0;
         boolean hasMore = true;
@@ -517,33 +515,67 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
     }
 
     private void initiateDeletionProcess() {
-        final List<MassDeleteAdapter.SearchResult> toDelete = new ArrayList<>();
-        boolean requiresSdCardPermission = false;
-        for (MassDeleteAdapter.SearchResult item : displayList) {
-            if (!item.isExcluded()) {
-                toDelete.add(item);
-                File file = getFileFromResult(item);
-                if (file != null && StorageUtils.isFileOnSdCard(this, file) && !StorageUtils.hasSdCardPermission(this)) {
-                    requiresSdCardPermission = true;
-                }
-            }
-        }
-        if (toDelete.isEmpty()) {
-            Toast.makeText(this, "No files selected for deletion.", Toast.LENGTH_LONG).show();
-            return;
+        // UPDATE: Fix Crash by moving heavy file pre-check to background task
+        new PreDeletionCheckTask().execute();
+    }
+
+    private class PreDeletionCheckTask extends AsyncTask<Void, Void, PreDeletionResults> {
+        private AlertDialog progressDialog;
+
+        @Override
+        protected void onPreExecute() {
+            progressDialog = new AlertDialog.Builder(MassDeleteActivity.this)
+                    .setMessage("Processing selection...")
+                    .setCancelable(false)
+                    .create();
+            progressDialog.show();
         }
 
-        if(requiresSdCardPermission) {
-            mResultsPendingPermission = toDelete;
-            mPendingOperation = new Runnable() {
-                @Override
-                public void run() {
-                    confirmAndDelete(toDelete);
+        @Override
+        protected PreDeletionResults doInBackground(Void... voids) {
+            List<MassDeleteAdapter.SearchResult> toDelete = new ArrayList<>();
+            boolean requiresSdCardPermission = false;
+            
+            for (MassDeleteAdapter.SearchResult item : displayList) {
+                if (!item.isExcluded()) {
+                    toDelete.add(item);
+                    File file = getFileFromResult(item);
+                    if (file != null && StorageUtils.isFileOnSdCard(MassDeleteActivity.this, file) && !StorageUtils.hasSdCardPermission(MassDeleteActivity.this)) {
+                        requiresSdCardPermission = true;
+                    }
                 }
-            };
-            promptForSdCardPermission();
-        } else {
-            confirmAndDelete(toDelete);
+            }
+            
+            if (toDelete.isEmpty()) return null;
+            return new PreDeletionResults(toDelete, requiresSdCardPermission);
+        }
+
+        @Override
+        protected void onPostExecute(PreDeletionResults results) {
+            if (progressDialog != null && progressDialog.isShowing()) progressDialog.dismiss();
+
+            if (results == null) {
+                Toast.makeText(MassDeleteActivity.this, "No files selected for deletion.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            if (results.requiresSdCardPermission) {
+                mResultsPendingPermission = results.processedDeleteList;
+                mPendingOperation = () -> confirmAndDelete(results.processedDeleteList);
+                promptForSdCardPermission();
+            } else {
+                confirmAndDelete(results.processedDeleteList);
+            }
+        }
+    }
+
+    private static class PreDeletionResults {
+        List<MassDeleteAdapter.SearchResult> processedDeleteList;
+        boolean requiresSdCardPermission;
+
+        PreDeletionResults(List<MassDeleteAdapter.SearchResult> processedDeleteList, boolean requiresSdCardPermission) {
+            this.processedDeleteList = processedDeleteList;
+            this.requiresSdCardPermission = requiresSdCardPermission;
         }
     }
 
@@ -553,7 +585,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
 			.setPositiveButton("Delete Permanently", new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
-                    // NEW: Batch size selection logic
                     final String[] batchOptions = {"1 (Single)", "5 at a time", "10 at a time", "20 at a time", "30 at a time"};
                     final int[] batchValues = {1, 5, 10, 20, 30};
 
@@ -570,7 +601,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
             .setNeutralButton("Move to Recycle", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                    // NEW: Recycle Bin selection logic
                     AlertDialog.Builder binBuilder = new AlertDialog.Builder(MassDeleteActivity.this);
                     binBuilder.setTitle("Choose Recycle Bin");
                     binBuilder.setItems(new CharSequence[]{"Phone Recycle Bin", "SD Card Recycle Bin"}, new DialogInterface.OnClickListener() {
@@ -610,13 +640,9 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
         startActivity(intent);
     }
 
-    private void moveToRecycleBin(List<MassDeleteAdapter.SearchResult> resultsToMove) {
-        // Obsolete stub, using MoveToRecycleTask directly instead.
-    }
-
     private void performDelete(final List<MassDeleteAdapter.SearchResult> toDelete, int batchSize) {
         ArrayList<String> filePathsToDelete = new ArrayList<>();
-        ArrayList<Uri> urisToDelete = new ArrayList<>(); // Android 11+ Requirement
+        ArrayList<Uri> urisToDelete = new ArrayList<>(); 
 
         for (MassDeleteAdapter.SearchResult item : toDelete) {
             File file = getFileFromResult(item);
@@ -631,14 +657,13 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
             return;
         }
 
-        // UPDATE: Android 11+ Scoped Storage Bulk Delete Request 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 android.app.PendingIntent pendingIntent = MediaStore.createDeleteRequest(getContentResolver(), urisToDelete);
                 mPendingFilePathsToDelete = filePathsToDelete;
                 mPendingBatchSize = batchSize;
                 startIntentSenderForResult(pendingIntent.getIntentSender(), 1001, null, 0, 0, 0);
-                return; // Execution pauses here and waits for user's permission popup response
+                return; 
             } catch (Exception e) {
                 Log.e(TAG, "Failed to create OS native delete request, falling back", e);
             }
@@ -701,7 +726,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        // UPDATE: Handle Android 11+ Bulk Delete Permission Response
         if (requestCode == 1001) { 
             if (resultCode == Activity.RESULT_OK && mPendingFilePathsToDelete != null) {
                 startDeleteService(mPendingFilePathsToDelete, mPendingBatchSize);
@@ -802,13 +826,11 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
         deleteCompletionReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                // FIXED: count fix
                 int deletedCount = intent.getIntExtra(DeleteService.EXTRA_DELETED_COUNT, 0);
                 Toast.makeText(MassDeleteActivity.this, "Deletion complete. " + deletedCount + " files removed.", Toast.LENGTH_LONG).show();
 
                 deletionProgressLayout.setVisibility(View.GONE);
                 
-                // UPDATE: Optimistic UI refresh prevents "Zero Files Removed" visual glitch
                 List<MassDeleteAdapter.SearchResult> toRemove = new ArrayList<>();
                 for (MassDeleteAdapter.SearchResult item : displayList) {
                     if (!item.isExcluded()) {
@@ -1117,7 +1139,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
                  if (!recycleBinDir.mkdir()) return new ArrayList<>();
             }
 
-            // UPDATE: Cache SD Card Recycle Bin once to prevent extreme SAF loop lag
             androidx.documentfile.provider.DocumentFile cachedSdRecycleBin = null;
             if (useSdCardBin) {
                 cachedSdRecycleBin = StorageUtils.getOrCreateSdCardRecycleBin(context);
@@ -1130,7 +1151,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
                     boolean moveSuccess = false;
                     
                     if (useSdCardBin && StorageUtils.isFileOnSdCard(context, sourceFile)) {
-                         // UPDATE: Pass cached SAF DocumentFile so it doesn't do a full root lookup per file
                          if (cachedSdRecycleBin != null && StorageUtils.moveFileOnSdCardSafely(context, sourceFile, cachedSdRecycleBin)) {
                              moveSuccess = true;
                          }
@@ -1150,7 +1170,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
                         if (sourceFile.renameTo(destFile)) {
                             moveSuccess = true;
                         } else {
-                            // UPDATE: Prevent copying byte-by-byte if both are on the SD Card and renaming failed
                             boolean isSourceOnSd = StorageUtils.isFileOnSdCard(context, sourceFile);
                             boolean isDestOnSd = StorageUtils.isFileOnSdCard(context, destFile);
                             
@@ -1171,7 +1190,6 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
 
                     if (moveSuccess) {
                         movedResults.add(result);
-                        // UPDATE: Removed context.sendBroadcast(ACTION_MEDIA_SCANNER_SCAN_FILE) to prevent intent spam
                     }
                 }
             }
@@ -1194,14 +1212,13 @@ public class MassDeleteActivity extends Activity implements MassDeleteAdapter.On
             }
         }
 
-        // UPDATE: Buffer significantly increased to speed up physical device-to-SD writes
         private boolean copyFile(File source, File destination) {
             InputStream in = null;
             OutputStream out = null;
             try {
                 in = new FileInputStream(source);
                 out = new FileOutputStream(destination);
-                byte[] buf = new byte[131072]; // 128KB chunk reads (increased from 8192)
+                byte[] buf = new byte[131072]; 
                 int len;
                 while ((len = in.read(buf)) > 0) {
                     out.write(buf, 0, len);
