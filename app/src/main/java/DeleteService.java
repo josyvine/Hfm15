@@ -35,7 +35,7 @@ public class DeleteService extends Service {
     public static final String EXTRA_DELETED_COUNT = "com.hfm.app.extra.DELETED_COUNT";
 
     private static final String NOTIFICATION_CHANNEL_ID = "DeleteServiceChannel";
-    private static final int FOREGROUND_ID = 9999; // Fixed ID for the service state
+    private static final int FOREGROUND_ID = 9999; 
 
     private NotificationManager notificationManager;
     private ExecutorService executorService;
@@ -47,7 +47,8 @@ public class DeleteService extends Service {
     public void onCreate() {
         super.onCreate();
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        executorService = Executors.newCachedThreadPool();
+        // Use a fixed pool to prevent over-loading the System Media Database
+        executorService = Executors.newFixedThreadPool(4);
         createNotificationChannel();
     }
 
@@ -58,7 +59,6 @@ public class DeleteService extends Service {
             return START_NOT_STICKY;
         }
 
-        // Capture files from Bridge immediately on Main Thread
         final ArrayList<String> filePathsToProcess;
         ArrayList<String> bridgedFiles = FileBridge.mFilesToDelete;
         
@@ -75,27 +75,19 @@ public class DeleteService extends Service {
             return START_NOT_STICKY;
         }
 
-        final int batchSize = intent.getIntExtra("batch_size", 1);
-        final int uniqueJobId = idGenerator.incrementAndGet(); // Guaranteed unique ID
-
+        final int uniqueJobId = idGenerator.incrementAndGet();
         activeTasks.incrementAndGet();
 
-        // Ensure Service is in Foreground state immediately
         if (!isServiceForeground) {
-            startForeground(FOREGROUND_ID, createNotification("HFM Service Active", "Processing deletion tasks...", 0, 0, false));
+            startForeground(FOREGROUND_ID, createNotification("HFM Delete Service", "Running tasks...", 0, 0, false));
             isServiceForeground = true;
         }
-
-        // Show the specific notification for THIS task
-        notificationManager.notify(uniqueJobId, createNotification("Initialising...", "Preparing files...", 0, filePathsToProcess.size(), true));
 
         executorService.execute(new Runnable() {
             @Override
             public void run() {
                 try {
-                    performDeletionTask(filePathsToProcess, batchSize, uniqueJobId);
-                } catch (Exception e) {
-                    Log.e(TAG, "Task failed", e);
+                    performDeletionTask(filePathsToProcess, uniqueJobId);
                 } finally {
                     if (activeTasks.decrementAndGet() <= 0) {
                         checkAndStop();
@@ -107,58 +99,55 @@ public class DeleteService extends Service {
         return START_STICKY;
     }
 
-    private void performDeletionTask(List<String> filePaths, int batchSize, int jobId) {
+    private void performDeletionTask(List<String> filePaths, int jobId) {
         int totalFiles = filePaths.size();
         int deletedCount = 0;
         ContentResolver resolver = getContentResolver();
 
-        // Start processing
-        for (int i = 0; i < totalFiles; i += batchSize) {
-            int end = Math.min(i + batchSize, totalFiles);
-            List<String> batchPaths = filePaths.subList(i, end);
+        // IMMEDIATELY update notification so it doesn't stay on "Initialising"
+        notificationManager.notify(jobId, createNotification("Deleting " + totalFiles + " files", "Starting...", 0, totalFiles, true));
 
-            // Database Wipe
-            try {
-                StringBuilder selection = new StringBuilder(MediaStore.Files.FileColumns.DATA + " IN (");
-                String[] selectionArgs = new String[batchPaths.size()];
-                for (int j = 0; j < batchPaths.size(); j++) {
-                    selection.append("?");
-                    if (j < batchPaths.size() - 1) selection.append(",");
-                    selectionArgs[j] = batchPaths.get(j);
-                }
-                selection.append(")");
-                resolver.delete(MediaStore.Files.getContentUri("external"), selection.toString(), selectionArgs);
-            } catch (Exception e) {
-                Log.e(TAG, "SQL Delete error", e);
+        for (int i = 0; i < totalFiles; i++) {
+            String path = filePaths.get(i);
+            File file = new File(path);
+            boolean deleted = false;
+
+            // 1. FAST DELETE (Java Path)
+            if (file.exists()) {
+                deleted = file.delete();
             }
 
-            // Physical Wipe
-            for (String path : batchPaths) {
-                File file = new File(path);
-                if (file.exists()) {
-                    if (!file.delete()) {
-                        StorageUtils.deleteFile(DeleteService.this, file);
-                    }
-                }
+            // 2. SLOW DELETE FALLBACK (SAF Path - only if Java fails)
+            if (!deleted && file.exists()) {
+                deleted = StorageUtils.deleteFile(DeleteService.this, file);
+            }
+
+            // 3. CLEAN DATABASE
+            if (deleted || !file.exists()) {
                 deletedCount++;
+                try {
+                    resolver.delete(MediaStore.Files.getContentUri("external"), 
+                        MediaStore.Files.FileColumns.DATA + "=?", new String[]{path});
+                } catch (Exception ignored) {}
             }
 
-            // Update this specific task's notification
-            String progressTitle = "Deleting " + totalFiles + " files";
-            String progressText = "Status: " + end + "/" + totalFiles + " processed";
-            notificationManager.notify(jobId, createNotification(progressTitle, progressText, end, totalFiles, true));
+            // UPDATE NOTIFICATION REGULARLY (Every 2 files or 100% update)
+            // This prevents the "Stuck" look because the UI refreshes frequently.
+            if (i % 2 == 0 || i == totalFiles - 1) {
+                String progressText = "Processed " + (i + 1) + " of " + totalFiles;
+                notificationManager.notify(jobId, createNotification("Deleting Files", progressText, i + 1, totalFiles, true));
+            }
         }
 
-        // Send Result Broadcast
+        // Final Broadcast
         Intent broadcastIntent = new Intent(ACTION_DELETE_COMPLETE);
         broadcastIntent.putExtra(EXTRA_DELETED_COUNT, deletedCount);
         LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
 
-        // Success State for notification
-        notificationManager.notify(jobId, createNotification("Deletion Complete", "Successfully removed " + deletedCount + " files", 100, 100, false));
+        // Final notification state
+        notificationManager.notify(jobId, createNotification("Done", "Removed " + deletedCount + " files", 100, 100, false));
         
-        // Auto-remove individual notification after 3 seconds
-        try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
+        try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
         notificationManager.cancel(jobId);
     }
 
@@ -171,41 +160,24 @@ public class DeleteService extends Service {
     }
 
     private Notification createNotification(String title, String content, int progress, int max, boolean ongoing) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+        return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(content)
                 .setSmallIcon(android.R.drawable.ic_menu_delete)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(ongoing)
-                .setOnlyAlertOnce(true);
-
-        if (max > 0) {
-            builder.setProgress(max, progress, false);
-        } else if (ongoing) {
-            builder.setProgress(0, 0, true);
-        }
-
-        return builder.build();
+                .setOnlyAlertOnce(true)
+                .setProgress(max, progress, max == 0 && ongoing)
+                .build();
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    NOTIFICATION_CHANNEL_ID,
-                    "File Deletion Service",
-                    NotificationManager.IMPORTANCE_LOW
-            );
+                    NOTIFICATION_CHANNEL_ID, "File Deletion", NotificationManager.IMPORTANCE_LOW);
             notificationManager.createNotificationChannel(channel);
         }
     }
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) { return null; }
-
-    @Override
-    public void onDestroy() {
-        if (executorService != null) executorService.shutdownNow();
-        super.onDestroy();
-    }
+    @Nullable @Override public IBinder onBind(Intent intent) { return null; }
 }
