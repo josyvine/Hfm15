@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.provider.MediaStore;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -51,17 +50,15 @@ public class DeleteService extends IntentService {
             return;
         }
 
-        // --- FIX: PULL FROM BRIDGE to avoid TransactionTooLargeException ---
-        // We also check the intent extra just in case it was called normally with a small list
+        // Pull from Bridge to avoid crash
         ArrayList<String> filePathsToDelete = FileBridge.mFilesToDelete;
         if (filePathsToDelete != null && !filePathsToDelete.isEmpty()) {
-            FileBridge.mFilesToDelete = new ArrayList<>(); // Clear bridge memory immediately
+            FileBridge.mFilesToDelete = new ArrayList<>(); 
         } else {
             filePathsToDelete = intent.getStringArrayListExtra(EXTRA_FILES_TO_DELETE);
         }
 
-        // Enhancement 4: Retrieve chosen batch size
-        int batchSize = intent.getIntExtra("batch_size", 1);
+        int batchSize = intent.getIntExtra("batch_size", 1); // Default to 1 if not set, but we usually set higher
 
         if (filePathsToDelete == null || filePathsToDelete.isEmpty()) {
             return;
@@ -70,7 +67,6 @@ public class DeleteService extends IntentService {
         int totalFiles = filePathsToDelete.size();
         int deletedCount = 0;
 
-        // --- UPDATE 2: Check for notification permission before showing notifications ---
         boolean canShowNotification = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
@@ -84,39 +80,30 @@ public class DeleteService extends IntentService {
             startForeground(NOTIFICATION_ID, createNotification("Starting deletion...", 0, totalFiles));
         }
 
-        // Logic for Batch Processing (Enhancement 4)
-        for (int i = 0; i < totalFiles; i += batchSize) {
-            int end = Math.min(i + batchSize, totalFiles);
+        // RESTORED: Batch processing logic. 
+        // We process in chunks to keep the UI responsive, but use the FAST FileUtils batch delete.
+        int processingBatchSize = 50; // Process 50 at a time for speed balance
+        
+        for (int i = 0; i < totalFiles; i += processingBatchSize) {
+            int end = Math.min(i + processingBatchSize, totalFiles);
             List<String> batchPaths = filePathsToDelete.subList(i, end);
+            List<File> batchFiles = new ArrayList<>();
 
             for (String path : batchPaths) {
-                File file = new File(path);
-                
-                // --- FIX: Use StorageUtils for reliable physical SD Card deletion ---
-                if (StorageUtils.deleteFile(this, file)) {
-                    deletedCount++;
-                    
-                    // Immediately clear the ghost entry from the Android MediaStore Database
-                    try {
-                        getContentResolver().delete(
-                            MediaStore.Files.getContentUri("external"), 
-                            MediaStore.Files.FileColumns.DATA + "=?", 
-                            new String[]{path}
-                        );
-                    } catch (Exception ignored) {}
-                } else {
-                    Log.e(TAG, "Failed to delete file: " + path);
-                }
+                batchFiles.add(new File(path));
             }
 
-            // --- UPDATE 4: Check permission again before updating the notification ---
+            // CRITICAL FIX: Use FileUtils.deleteFileBatch. 
+            // This performs a single SQL delete for the whole batch (INSTANT)
+            // instead of looping SAF calls (SLOW).
+            deletedCount += FileUtils.deleteFileBatch(this, batchFiles);
+
             if (canShowNotification) {
                 String progressText = "Deleted " + end + " of " + totalFiles + "...";
                 notificationManager.notify(NOTIFICATION_ID, createNotification(progressText, end, totalFiles));
             }
         }
 
-        // Send completion broadcast with the accurate count to the Activity
         Intent broadcastIntent = new Intent(ACTION_DELETE_COMPLETE);
         broadcastIntent.putExtra(EXTRA_DELETED_COUNT, deletedCount);
         LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
@@ -133,7 +120,7 @@ public class DeleteService extends IntentService {
         if (max > 0) {
             builder.setProgress(max, progress, false);
         } else {
-            builder.setProgress(0, 0, true); // Indeterminate progress
+            builder.setProgress(0, 0, true);
         }
 
         return builder.build();
