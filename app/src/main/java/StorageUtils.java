@@ -26,7 +26,7 @@ public class StorageUtils {
     
     public static final String SD_RECYCLE_BIN_NAME = "HFMRecycleBin";
 
-    // UPDATE: Static cache variable to prevent ANR crash on large file selections
+    // Static cache variable to prevent ANR crash on large file selections
     private static String cachedSdCardPath = null;
 
     public static void saveSdCardUri(Context context, Uri uri) {
@@ -86,7 +86,6 @@ public class StorageUtils {
     }
 
     public static boolean isFileOnSdCard(Context context, File file) {
-        // UPDATE: This method is now instant because it uses the cached path variable
         String sdCardPath = getSdCardPath(context);
         if (sdCardPath != null && file != null) {
             try {
@@ -101,12 +100,14 @@ public class StorageUtils {
     public static boolean deleteFile(Context context, File file) {
         if (file == null || !file.exists()) return true;
 
+        // Try standard Java delete first
         if (file.delete()) {
             return true;
         }
 
+        // If it's on SD Card and Java delete failed, use SAF
         if (isFileOnSdCard(context, file)) {
-            DocumentFile docFile = getDocumentFile(context, file, false);
+            DocumentFile docFile = getDocumentFile(context, file, file.isDirectory());
             if (docFile != null && docFile.exists()) {
                 if (docFile.delete()) {
                     return true;
@@ -116,21 +117,31 @@ public class StorageUtils {
         return false;
     }
 
+    /**
+     * Optimized Recursive Delete.
+     * Tells the System OS to wipe the folder entry, which is significantly faster 
+     * than iterating through every single file in the app logic.
+     */
     public static void deleteRecursive(Context context, File fileOrDirectory) {
-        if (fileOrDirectory.isDirectory()) {
+        if (fileOrDirectory == null || !fileOrDirectory.exists()) return;
+
+        // On modern Android, calling delete() on a directory object via SAF 
+        // triggers a recursive wipe at the system level.
+        boolean success = deleteFile(context, fileOrDirectory);
+
+        // Fallback: If system wipe didn't work, perform manual leaf-node recursion
+        if (!success && fileOrDirectory.isDirectory()) {
             File[] children = fileOrDirectory.listFiles();
             if (children != null) {
                 for (File child : children) {
                     deleteRecursive(context, child);
                 }
             }
+            deleteFile(context, fileOrDirectory);
         }
-        deleteFile(context, fileOrDirectory);
     }
 
     public static String getSdCardPath(Context context) {
-        // UPDATE: Check cache first. If we already know the path, return it immediately.
-        // This avoids the expensive 'getExternalFilesDirs' Binder call inside loops.
         if (cachedSdCardPath != null) {
             return cachedSdCardPath;
         }
