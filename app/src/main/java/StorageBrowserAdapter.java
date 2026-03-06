@@ -136,8 +136,11 @@ public class StorageBrowserAdapter extends RecyclerView.Adapter<RecyclerView.Vie
             fileViewHolder.fileName.setText(file.getName());
             fileViewHolder.thumbnailImage.setImageResource(android.R.color.darker_gray);
             fileViewHolder.thumbnailImage.setTag(file.getAbsolutePath());
+            
             fileViewHolder.selectionOverlay.setVisibility(item.isSelected() ? View.VISIBLE : View.GONE);
-            fileViewHolder.selectionCheckbox.setVisibility(file.isDirectory() ? View.GONE : View.VISIBLE);
+            
+            // FIX: Set checkbox to VISIBLE for all items, including directories, to allow folder multi-select
+            fileViewHolder.selectionCheckbox.setVisibility(View.VISIBLE);
 
             fileViewHolder.selectionCheckbox.setOnCheckedChangeListener(null);
             fileViewHolder.selectionCheckbox.setChecked(item.isSelected());
