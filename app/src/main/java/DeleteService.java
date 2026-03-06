@@ -45,14 +45,14 @@ public class DeleteService extends Service {
     private NotificationManager notificationManager;
     private ExecutorService executorService;
     private final AtomicInteger activeTasks = new AtomicInteger(0);
-    private final AtomicInteger idGenerator = new AtomicInteger(100); // Start job IDs from 100
+    private final AtomicInteger idGenerator = new AtomicInteger(100); 
     private boolean isServiceForeground = false;
 
     @Override
     public void onCreate() {
         super.onCreate();
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        // Thread pool set to 8 to handle high-concurrency parallel deletions
+        // Thread pool set to 8 for high-concurrency parallel tasks
         executorService = Executors.newFixedThreadPool(8);
         createNotificationChannel();
     }
@@ -80,7 +80,7 @@ public class DeleteService extends Service {
             return START_NOT_STICKY;
         }
 
-        // Get the chosen batch size from the activity
+        // Get the chosen master batch size (e.g. 50 or 100)
         int batchSize = intent.getIntExtra("batch_size", 10);
         if (batchSize < 1) batchSize = 1;
 
@@ -89,12 +89,12 @@ public class DeleteService extends Service {
             isServiceForeground = true;
         }
 
-        // AUTO-OPEN THE MONITOR POPUP
+        // Auto-open monitor popup
         Intent monitorIntent = new Intent(this, DeletionMonitorActivity.class);
         monitorIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(monitorIntent);
 
-        // REQUIREMENT: PARALLEL CHUNKING (IDM STYLE)
+        // Splitting master list into chunks for parallel sub-jobs (IDM STYLE)
         for (int i = 0; i < fullList.size(); i += batchSize) {
             int end = Math.min(i + batchSize, fullList.size());
             final List<String> chunk = new ArrayList<>(fullList.subList(i, end));
@@ -124,60 +124,62 @@ public class DeleteService extends Service {
         int deletedCount = 0;
         ContentResolver resolver = getContentResolver();
 
-        sendLog("Job #" + jobId + ": Initialising parallel batch of " + totalInBatch + " files.");
+        sendLog("Job #" + jobId + ": Initialising parallel thread for " + totalInBatch + " items.");
         notificationManager.notify(jobId, createNotification("Deleting Batch #" + jobId, "Starting...", 0, totalInBatch, true));
 
-        // INCREASE INTERNAL ENGINE: Process in sub-groups of 3 instead of 1-by-1
+        // Process in sub-groups of 3 to optimize MediaStore transactions
         for (int i = 0; i < totalInBatch; i += 3) {
             int groupEnd = Math.min(i + 3, totalInBatch);
             List<String> subGroup = filePaths.subList(i, groupEnd);
             
-            // 1. PHYSICAL DELETE (Java path with SAF fallback)
+            // 1. TURBO FOLDER DETECTION & WIPE
             for (String path : subGroup) {
                 File file = new File(path);
                 String fileName = file.getName();
                 boolean deleted = false;
-                
-                sendLog("Initialising: " + fileName);
 
-                if (file.exists()) {
-                    deleted = file.delete();
-                    if (deleted) sendLog("[Job " + jobId + "] [FAST] Java Deleted: " + fileName);
-                }
-
-                if (!deleted && file.exists()) {
-                    sendLog("[Job " + jobId + "] [WAIT] SAF request for: " + fileName);
-                    deleted = StorageUtils.deleteFile(DeleteService.this, file);
-                    if (deleted) sendLog("[Job " + jobId + "] [SLOW] SAF Deleted: " + fileName);
-                }
-                
-                if (deleted || !file.exists()) {
+                if (!file.exists()) {
                     deletedCount++;
+                    continue;
+                }
+
+                if (file.isDirectory()) {
+                    sendLog("[Job " + jobId + "] Folder Detected: " + fileName + ". Executing Turbo Wipe...");
+                    StorageUtils.deleteRecursive(DeleteService.this, file);
+                    deleted = !file.exists();
+                } else {
+                    // It's a file, use fast-path deletion
+                    deleted = file.delete();
+                    if (!deleted) {
+                        sendLog("[Job " + jobId + "] [SAF] Requesting deletion for: " + fileName);
+                        deleted = StorageUtils.deleteFile(DeleteService.this, file);
+                    }
+                }
+
+                if (deleted) {
+                    deletedCount++;
+                    // Immediate database removal for each item
+                    try {
+                        if (file.isDirectory()) {
+                            // If a folder was wiped, remove the folder and everything inside it from the DB
+                            resolver.delete(MediaStore.Files.getContentUri("external"), 
+                                MediaStore.Files.FileColumns.DATA + " LIKE ?", new String[]{path + "%"});
+                        } else {
+                            resolver.delete(MediaStore.Files.getContentUri("external"), 
+                                MediaStore.Files.FileColumns.DATA + "=?", new String[]{path});
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "DB removal failed for " + fileName);
+                    }
                 }
             }
 
-            // 2. DATABASE BATCH WIPE (SQL "IN" clause for the sub-group)
-            try {
-                StringBuilder where = new StringBuilder(MediaStore.Files.FileColumns.DATA + " IN (");
-                String[] args = new String[subGroup.size()];
-                for (int j = 0; j < subGroup.size(); j++) {
-                    where.append("?");
-                    if (j < subGroup.size() - 1) where.append(",");
-                    args[j] = subGroup.get(j);
-                }
-                where.append(")");
-                
-                resolver.delete(MediaStore.Files.getContentUri("external"), where.toString(), args);
-            } catch (Exception e) {
-                sendLog("[Job " + jobId + "] DB Error: " + e.getMessage());
-            }
-
-            // Update this specific notification bar
+            // Update individual notification bar progress
             String progressText = "Processed " + groupEnd + " of " + totalInBatch;
             notificationManager.notify(jobId, createNotification("Deleting Batch #" + jobId, progressText, groupEnd, totalInBatch, true));
         }
 
-        sendLog("Job #" + jobId + " complete.");
+        sendLog("Job #" + jobId + " complete. Items removed: " + deletedCount);
 
         // Broadcast overall completion
         Intent broadcastIntent = new Intent(ACTION_DELETE_COMPLETE);
@@ -185,7 +187,7 @@ public class DeleteService extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
 
         // Individual Job Done State
-        notificationManager.notify(jobId, createNotification("Batch #" + jobId + " Done", "Removed " + deletedCount + " files", 100, 100, false));
+        notificationManager.notify(jobId, createNotification("Batch #" + jobId + " Done", "Finished " + deletedCount + " items", 100, 100, false));
         
         try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
         notificationManager.cancel(jobId);
