@@ -91,17 +91,23 @@ public class FileHiderAdapter extends RecyclerView.Adapter<FileHiderAdapter.File
             }
         });
 
-        // GLIDE INTEGRATION
-        int fallbackIcon = getIconForFileType(file.getName());
-        
-        Glide.with(context)
-            .load(file)
-            .apply(new RequestOptions()
-                .placeholder(fallbackIcon)
-                .error(fallbackIcon)
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .centerCrop())
-            .into(holder.thumbnailImage);
+        // --- NEW LOGIC: Handle Folder Visualization ---
+        if (file.isDirectory()) {
+            // Set folder icon and skip Glide loading
+            holder.thumbnailImage.setImageResource(R.drawable.ic_folder_modern);
+        } else {
+            // It's a file, load thumbnail or fallback icon using Glide
+            int fallbackIcon = getIconForFileType(file.getName());
+            
+            Glide.with(context)
+                .load(file)
+                .apply(new RequestOptions()
+                    .placeholder(fallbackIcon)
+                    .error(fallbackIcon)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .centerCrop())
+                .into(holder.thumbnailImage);
+        }
     }
 
     private int getIconForFileType(String fileName) {
