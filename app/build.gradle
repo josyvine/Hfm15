@@ -13,10 +13,22 @@ android {
         versionName "1.0"
     }
 
+    // NEW: GitHub Actions signing config using environment variables
+    signingConfigs {
+        release {
+            storeFile file("release.jks")
+            storePassword System.getenv("KEYSTORE_PASSWORD")
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Apply signing config to release
+            signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false
@@ -32,17 +44,11 @@ android {
         exclude 'META-INF/LGPL2.1'
         exclude 'META-INF/LICENSE'
         exclude 'META-INF/NOTICE'
+        exclude 'META-INF/DEPENDENCIES'
     }
 
     aaptOptions {
         noCompress "txt"
-    }
-
-    // Optional – ensures native .so libraries from libtorrent4j are packaged correctly
-    packagingOptions {
-        jniLibs {
-            useLegacyPackaging = false
-        }
     }
 }
 
@@ -94,15 +100,16 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
 
-    // ✅ Libtorrent4j (core + native Android architectures)
-    def libtorrentVersion = "2.1.0-38"
-    implementation "org.libtorrent4j:libtorrent4j:$libtorrentVersion"
-    implementation "org.libtorrent4j:libtorrent4j-android-arm64:$libtorrentVersion"
-    implementation "org.libtorrent4j:libtorrent4j-android-arm:$libtorrentVersion"
-    implementation "org.libtorrent4j:libtorrent4j-android-x86:$libtorrentVersion"
-    implementation "org.libtorrent4j:libtorrent4j-android-x86_64:$libtorrentVersion"
+    // --- GOOGLE DRIVE & AUTH DEPENDENCIES (Added for Morphed Method) ---
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
+    implementation 'com.google.api-client:google-api-client-android:1.34.0'
+    implementation 'com.google.apis:google-api-services-drive:v3-rev20230822-2.0.0'
+    implementation 'com.google.http-client:google-http-client-android:1.43.3'
+    implementation 'com.google.code.gson:gson:2.10.1'
 
     // ✅ Glide for Image Loading
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+    
+    // Note: libtorrent4j has been completely removed to be replaced by Morphed Shard Drive System.
 }
