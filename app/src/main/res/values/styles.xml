@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base Theme - DO NOT USE DIRECTLY -->
-    <style name="AppThemeBase" parent="android:Theme.DeviceDefault.Light.NoActionBar">
+    <!-- Base Theme - Updated to Theme.AppCompat.Light.NoActionBar -->
+    <style name="AppThemeBase" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">?attr/appBackgroundColor</item>
         <item name="android:colorPrimary">?attr/appPrimaryColor</item>
         <item name="android:textColor">?attr/appTextColor</item>
         <item name="android:buttonStyle">@style/AppButton</item>
     </style>
 
-    <style name="AppButton" parent="android:Widget.Button">
+    <style name="AppButton" parent="Widget.AppCompat.Button">
         <item name="android:textColor">?attr/appHeaderTextColor</item>
         <item name="android:background">?attr/appPrimaryColor</item>
     </style>
@@ -53,9 +53,8 @@
         <item name="appHeaderTextColor">@color/solarized_headerTextColor</item>
     </style>
 
-    <!-- Special Dark Theme for MainActivity WebView background -->
-    <style name="AppTheme.MainActivity" parent="android:Theme.DeviceDefault.NoActionBar.Fullscreen">
+    <!-- Special Dark Theme for MainActivity WebView background - Updated to AppCompat descendant -->
+    <style name="AppTheme.MainActivity" parent="Theme.AppCompat.Light.NoActionBar.FullScreen">
         <item name="android:windowBackground">#071023</item>
     </style>
 </resources>
-
