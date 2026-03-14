@@ -53,8 +53,10 @@
         <item name="appHeaderTextColor">@color/solarized_headerTextColor</item>
     </style>
 
-    <!-- Special Dark Theme for MainActivity WebView background - Updated to AppCompat descendant -->
-    <style name="AppTheme.MainActivity" parent="Theme.AppCompat.Light.NoActionBar.FullScreen">
+    <!-- Special Dark Theme for MainActivity WebView background -->
+    <style name="AppTheme.MainActivity" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">#071023</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
     </style>
 </resources>
