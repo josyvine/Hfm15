@@ -321,14 +321,11 @@ public class HFMDropActivity extends Activity {
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        Log.d(TAG, "Drop request accepted and updated. Starting download service.");
+                        Log.d(TAG, "Drop request accepted. Starting download service.");
 
                         Intent serviceIntent = new Intent(HFMDropActivity.this, DownloadService.class);
                         serviceIntent.putExtra("drop_request_id", request.id);
-                        serviceIntent.putExtra("magnet_link", request.magnetLink);
-                        serviceIntent.putExtra("original_filename", request.filename);
-                        serviceIntent.putExtra("cloaked_filename", request.cloakedFilename);
-                        serviceIntent.putExtra("filesize", request.filesize);
+                        // The service will fetch the rest of the details from Firestore using the ID
                         ContextCompat.startForegroundService(HFMDropActivity.this, serviceIntent);
 
                         Intent progressIntent = new Intent(HFMDropActivity.this, DropProgressActivity.class);
@@ -368,11 +365,10 @@ public class HFMDropActivity extends Activity {
         public String id;
         public String senderUsername;
         public String receiverUsername;
-        public String filename;
-        public String cloakedFilename;
+        public String originalFilename;
         public long filesize;
         public String status;
-        public String magnetLink;
+        public String encryptedManifestId; // Replaced magnetLink
 
         public DropRequest() {}
     }
@@ -404,7 +400,7 @@ public class HFMDropActivity extends Activity {
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             final DropRequest request = requestList.get(position);
 
-            holder.filename.setText(request.filename);
+            holder.filename.setText(request.originalFilename); // Use original filename for UI
             holder.senderInfo.setText("From: " + request.senderUsername);
             holder.filesize.setText("Size: " + Formatter.formatFileSize(context, request.filesize));
 
