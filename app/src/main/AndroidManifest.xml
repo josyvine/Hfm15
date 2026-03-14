@@ -75,7 +75,7 @@
         <activity
             android:name=".DriveViewerActivity"
             android:label="My Google Drive"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false" />
 
         <activity
@@ -249,36 +249,36 @@
         <activity
             android:name=".CategoryPickerActivity"
             android:label="Select Content"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false"/>
         <activity
             android:name=".MediaPickerActivity"
             android:label="Select Media"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false"/>
         <activity
             android:name=".AppPickerActivity"
             android:label="Select Apps"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false"/>
         <activity
             android:name=".AdvancedFilePickerActivity"
             android:label="Browse Files"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false"/>
 
         <!-- NEW ACTIVITY FOR HFM MESSENGER DROP -->
         <activity
             android:name=".HFMDropActivity"
             android:label="HFM Messenger Drop"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false"/>
 
         <!-- THIS IS THE FIX: Declare the new DropProgressActivity -->
         <activity
             android:name=".DropProgressActivity"
             android:label="HFM Drop Progress"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false"/>
 
         <!-- NEW: LIVE DELETION MONITOR POPUP -->
