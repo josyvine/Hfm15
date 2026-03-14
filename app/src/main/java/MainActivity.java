@@ -21,12 +21,22 @@ import android.webkit.WebView;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.api.services.drive.DriveScopes;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -39,7 +49,8 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends Activity {
+// Upgraded to AppCompatActivity to support modern ActivityResultLauncher for Google Auth
+public class MainActivity extends AppCompatActivity {
     private static final String TAG = "HFM_MainActivity";
     private static final int STORAGE_PERMISSION_REQUEST_CODE = 456;
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 457;
@@ -48,6 +59,10 @@ public class MainActivity extends Activity {
     private WebView webView;
     private FirebaseAuth mAuth;
     private ArrayList<String> filesToSendViaDrop;
+
+    // Google Drive Auth Variables
+    private GoogleSignInClient googleSignInClient;
+    private ActivityResultLauncher<Intent> driveSignInLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,6 +86,7 @@ public class MainActivity extends Activity {
 
         mAuth = FirebaseAuth.getInstance();
 
+        setupGoogleDriveAuth();
         requestFilePermissions();
         signInAnonymously();
         webView.loadUrl("file:///android_asset/webview-app.html");
@@ -83,6 +99,48 @@ public class MainActivity extends Activity {
         } else {
             super.onBackPressed();
         }
+    }
+
+    private void setupGoogleDriveAuth() {
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .requestScopes(new Scope(DriveScopes.DRIVE_FILE))
+                .build();
+
+        googleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        driveSignInLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(result.getData());
+                        try {
+                            GoogleSignInAccount account = task.getResult(ApiException.class);
+                            if (account != null && GoogleSignIn.hasPermissions(account, new Scope(DriveScopes.DRIVE_FILE))) {
+                                Toast.makeText(this, "Google Drive Connected!", Toast.LENGTH_SHORT).show();
+                                updateWebViewDriveStatus(true);
+                            } else {
+                                GoogleSignIn.requestPermissions(this, 1001, account, new Scope(DriveScopes.DRIVE_FILE));
+                            }
+                        } catch (ApiException e) {
+                            Log.e(TAG, "Google Sign-In failed", e);
+                            Toast.makeText(this, "Google Drive Sign-In Failed.", Toast.LENGTH_SHORT).show();
+                            updateWebViewDriveStatus(false);
+                        }
+                    } else {
+                        Toast.makeText(this, "Google Drive Sign-In Cancelled.", Toast.LENGTH_SHORT).show();
+                        updateWebViewDriveStatus(false);
+                    }
+                }
+        );
+    }
+
+    private void updateWebViewDriveStatus(boolean isLoggedIn) {
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript("window.updateDriveAuthStatus(" + isLoggedIn + ");", null);
+            }
+        });
     }
 
     private void signInAnonymously() {
@@ -156,11 +214,20 @@ public class MainActivity extends Activity {
                     showSendToDropDialog();
                 }
             }
+        } else if (requestCode == 1001) {
+            // Fallback permission request from GoogleSignIn
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(this, "Drive Permissions Granted.", Toast.LENGTH_SHORT).show();
+                updateWebViewDriveStatus(true);
+            } else {
+                Toast.makeText(this, "Drive Permissions Denied.", Toast.LENGTH_LONG).show();
+                updateWebViewDriveStatus(false);
+            }
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -213,9 +280,9 @@ public class MainActivity extends Activity {
 
         new AlertDialog.Builder(this)
             .setTitle("Important: Connection Stability")
-            .setMessage("You are about to act as a temporary server for this file transfer.\n\n"
+            .setMessage("You are about to transfer a file using the Morphed Data Shard System.\n\n"
                     + "Please keep the app open and maintain a stable internet connection until the transfer is complete.\n\n"
-                    + "Your Secret Number for this transfer is:\n" + secretNumber + "\n\nShare this number with the receiver.")
+                    + "Your Secret Number for this transfer is:\n" + secretNumber + "\n\nShare this number securely with the receiver.")
             .setPositiveButton("I Understand, Start Sending", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
@@ -231,7 +298,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Error: No file selected to send.", Toast.LENGTH_SHORT).show();
             return;
         }
-        // SenderService will only handle one file at a time per the plan.
+        
         String filePath = filesToSendViaDrop.get(0);
 
         Intent intent = new Intent(this, SenderService.class);
@@ -259,72 +326,61 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openDashboard() {
-            Log.d("HFMApp_WebView", "openDashboard() called. Relaunching DashboardActivity.");
             Intent intent = new Intent(mContext, DashboardActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void openSearch() {
-            Log.d("HFMApp_WebView", "openSearch() called. Launching SearchActivity.");
             Intent intent = new Intent(mContext, SearchActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void openMassDelete() {
-            Log.d("HFMApp_WebView", "openMassDelete() called. Launching MassDeleteActivity.");
             Intent intent = new Intent(mContext, MassDeleteActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void openRecycleBin() {
-            Log.d("HFMApp_WebView", "openRecycleBin() called. Launching RecycleBinActivity.");
             Intent intent = new Intent(mContext, RecycleBinActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void openContactForm() {
-            Log.d("HFMApp_WebView", "openContactForm() called. Launching ContactActivity.");
             Intent intent = new Intent(mContext, ContactActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void clearCache() {
-            Log.d("HFMApp_WebView", "clearCache() called. Launching CacheCleanerActivity.");
             Intent intent = new Intent(mContext, CacheCleanerActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void openReader() {
-            Log.d("HFMApp_WebView", "openReader() called. Launching ReaderActivity.");
             Intent intent = new Intent(mContext, ReaderActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void openStorageMap() {
-            Log.d("HFMApp_WebView", "openStorageMap() called. Launching StorageMapActivity.");
             Intent intent = new Intent(mContext, StorageMapActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void onHideIconTapped() {
-            Log.d(TAG, "Hide icon tapped. Checking for existing rituals...");
             RitualManager ritualManager = new RitualManager();
             List<RitualManager.Ritual> rituals = ritualManager.loadRituals(mContext);
 
             if (rituals == null || rituals.isEmpty()) {
-                Log.d(TAG, "No rituals found. Launching FileHiderActivity.");
                 Intent intent = new Intent(mContext, FileHiderActivity.class);
                 mContext.startActivity(intent);
             } else {
-                Log.d(TAG, rituals.size() + " rituals found. Launching RitualListActivity.");
                 Intent intent = new Intent(mContext, RitualListActivity.class);
                 mContext.startActivity(intent);
             }
@@ -332,7 +388,6 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void setTheme(final String themeName) {
-            Log.d(TAG, "setTheme() called from WebView with theme: " + themeName);
             ThemeManager.setTheme(mContext, themeName);
             new android.os.Handler(mContext.getMainLooper()).post(new Runnable() {
 					@Override
@@ -344,7 +399,6 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openShareHub() {
-            Log.d("HFMApp_WebView", "openShareHub() called. Launching ShareHubActivity.");
             Intent intent = new Intent(mContext, ShareHubActivity.class);
             mContext.startActivity(intent);
         }
@@ -387,25 +441,53 @@ public class MainActivity extends Activity {
 				});
         }
 
-        // --- NEW JAVASCRIPT INTERFACE METHODS FOR HFM MESSENGER DROP ---
+        // --- NEW JAVASCRIPT INTERFACE METHODS FOR HFM MESSENGER DROP & GOOGLE DRIVE ---
+
+        @JavascriptInterface
+        public boolean isDriveLoggedIn() {
+            GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(mContext);
+            return account != null && GoogleSignIn.hasPermissions(account, new Scope(DriveScopes.DRIVE_FILE));
+        }
+
+        @JavascriptInterface
+        public void toggleDriveAuth() {
+            if (isDriveLoggedIn()) {
+                // Log Out
+                googleSignInClient.signOut().addOnCompleteListener(task -> {
+                    Toast.makeText(mContext, "Logged out of Google Drive", Toast.LENGTH_SHORT).show();
+                    updateWebViewDriveStatus(false);
+                });
+            } else {
+                // Log In
+                Intent signInIntent = googleSignInClient.getSignInIntent();
+                driveSignInLauncher.launch(signInIntent);
+            }
+        }
+
+        @JavascriptInterface
+        public void openDriveViewer() {
+            if (isDriveLoggedIn()) {
+                Intent intent = new Intent(mContext, DriveViewerActivity.class);
+                mContext.startActivity(intent);
+            } else {
+                runOnUiThread(() -> Toast.makeText(mContext, "Please sign in to Google Drive first.", Toast.LENGTH_SHORT).show());
+            }
+        }
 
         @JavascriptInterface
         public void sendViaDrop() {
-            Log.d("HFMApp_WebView", "sendViaDrop() called.");
             Intent intent = new Intent(mContext, CategoryPickerActivity.class);
             startActivityForResult(intent, DROP_FILE_PICKER_REQUEST_CODE);
         }
 
         @JavascriptInterface
         public void receiveViaDrop() {
-            Log.d("HFMApp_WebView", "receiveViaDrop() called.");
             Intent intent = new Intent(mContext, HFMDropActivity.class);
             mContext.startActivity(intent);
         }
 
         @JavascriptInterface
         public void regenerateHFMId() {
-            Log.d("HFMApp_WebView", "regenerateHFMId() called.");
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
