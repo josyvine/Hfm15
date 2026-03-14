@@ -83,6 +83,8 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-common-java8:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-livedata:2.7.0'
+    // --- BUILD FIX: Added lifecycle-process dependency for ProcessLifecycleOwner ---
+    implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
 
     // Hidden dependencies of Fragment/Biometric
     implementation 'androidx.activity:activity:1.8.2'
@@ -110,6 +112,6 @@ dependencies {
     // ✅ Glide for Image Loading
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
-    
+
     // Note: libtorrent4j has been completely removed to be replaced by Morphed Shard Drive System.
 }
