@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
   <head>
@@ -419,12 +418,14 @@
 	  </div>
     </div>
 
-    <!-- NEW HFM DROP MODAL -->
+    <!-- NEW HFM DROP MODAL WITH GOOGLE DRIVE AUTH -->
     <div id="dropModal" class="modal hidden">
         <div class="box">
             <h3>HFM Messenger Drop</h3>
-            <p class="muted">A private, peer-to-peer file transfer system. Your identity is temporary.</p>
-            <div class="theme-buttons" style="grid-template-columns: 1fr;"> <!-- override to single column -->
+            <p class="muted">Ultra-Secure Polymorphic Data Shard System. Google Drive authentication required.</p>
+            <div class="theme-buttons" style="grid-template-columns: 1fr;">
+                <button class="btn ghost" id="driveAuthBtn" style="border-color: #4f46e5; color: #fff;">Sign In to Google Drive</button>
+                <button class="btn ghost hidden" id="viewDriveBtn" style="border-color: #10b981; color: #fff;">View My Drive</button>
                 <button class="btn" id="sendDropBtn">Send File via Drop</button>
                 <button class="btn" id="receiveDropBtn">Receive File via Drop</button>
                 <button class="btn ghost" id="regenerateDropIdBtn">Regenerate My HFM ID</button>
@@ -439,7 +440,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // --- Elements ---
     const openFolderBtn = document.getElementById('openFolderBtn');
     const shareHubBtn = document.getElementById('shareHubBtn');
-    const hfmDropBtn = document.getElementById('hfmDropBtn'); // New
+    const hfmDropBtn = document.getElementById('hfmDropBtn'); 
     const panel = document.querySelector('.panel');
     const helpBtn = document.getElementById('helpBtn');
     const helpView = document.getElementById('helpView');
@@ -454,14 +455,19 @@ document.addEventListener("DOMContentLoaded", function() {
     const hideFileBtn = document.getElementById('hideFileBtn');
     const themeBtn = document.getElementById('themeBtn');
     const themeModal = document.getElementById('themeModal');
-    const dropModal = document.getElementById('dropModal'); // New
+    const dropModal = document.getElementById('dropModal'); 
     const geminiBtn = document.getElementById('geminiBtn');
+    
+    // NEW: Drive Auth Variables
+    const driveAuthBtn = document.getElementById('driveAuthBtn');
+    const viewDriveBtn = document.getElementById('viewDriveBtn');
+    let isDriveAuthenticated = false;
     
     // --- INITIALIZATION ---
     function initialize() {
         openFolderBtn.onclick = function() { callAndroid('openSearch'); };
         shareHubBtn.onclick = function() { callAndroid('openShareHub'); };
-        hfmDropBtn.onclick = openDropModal; // New
+        hfmDropBtn.onclick = openDropModal; 
         openNativeSearchBtn.onclick = function() { callAndroid('openSearch'); };
         contactBtn.onclick = function() { callAndroid('openContactForm'); };
         cleanCacheBtn.onclick = function() { callAndroid('clearCache'); };
@@ -485,14 +491,39 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('setThemeNordicBtn').onclick = function() { applyTheme('nordic'); };
         document.getElementById('setThemeSolarizedBtn').onclick = function() { applyTheme('solarized'); };
 
-        // New Drop Modal listeners
+        // New Drop Modal listeners WITH AUTH GATE
         document.getElementById('closeDropModalBtn').onclick = closeDropModal;
-        document.getElementById('sendDropBtn').onclick = function() { callAndroid('sendViaDrop'); closeDropModal(); };
+        document.getElementById('sendDropBtn').onclick = function() { 
+            if(isDriveAuthenticated) {
+                callAndroid('sendViaDrop'); 
+                closeDropModal(); 
+            } else {
+                alert('Please Sign In to Google Drive first to use the Morphed File System.');
+            }
+        };
         document.getElementById('receiveDropBtn').onclick = function() { callAndroid('receiveViaDrop'); closeDropModal(); };
         document.getElementById('regenerateDropIdBtn').onclick = function() { callAndroid('regenerateHFMId'); closeDropModal(); };
 
+        // Drive Auth Button Listeners
+        driveAuthBtn.onclick = function() { callAndroid('toggleDriveAuth'); };
+        viewDriveBtn.onclick = function() { callAndroid('openDriveViewer'); closeDropModal(); };
+
         setupSwipeToRefresh();
     }
+    
+    // EXPOSED FUNCTION FOR ANDROID TO UPDATE UI
+    window.updateDriveAuthStatus = function(isLoggedIn) {
+        isDriveAuthenticated = isLoggedIn;
+        if(isLoggedIn) {
+            driveAuthBtn.innerText = "Log Out of Google Drive";
+            driveAuthBtn.style.borderColor = "#ef4444"; 
+            viewDriveBtn.classList.remove('hidden');
+        } else {
+            driveAuthBtn.innerText = "Sign In to Google Drive";
+            driveAuthBtn.style.borderColor = "#4f46e5"; 
+            viewDriveBtn.classList.add('hidden');
+        }
+    };
     
     function log(msg){
         if (window.Android) window.Android.log(String(msg));
@@ -566,6 +597,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function openDropModal() {
+        // Query Android for current Drive auth status immediately upon opening
+        if(window.Android && typeof window.Android.isDriveLoggedIn === 'function') {
+            window.updateDriveAuthStatus(window.Android.isDriveLoggedIn());
+        }
         dropModal.classList.remove('hidden');
         closeSliderMenu();
     }
