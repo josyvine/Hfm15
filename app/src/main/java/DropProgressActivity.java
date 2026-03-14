@@ -66,9 +66,9 @@ public class DropProgressActivity extends Activity {
     
     private void setupInitialState() {
         if (isSender) {
-            titleTextView.setText("HFM Drop - Sending");
+            titleTextView.setText("HFM Morphing - Sending");
         } else {
-            titleTextView.setText("HFM Drop - Receiving");
+            titleTextView.setText("HFM Morphing - Receiving");
         }
     }
 
@@ -110,6 +110,7 @@ public class DropProgressActivity extends Activity {
                     if (major != null) statusMajorTextView.setText(major);
                     if (minor != null) statusMinorTextView.setText(minor);
 
+                    // Update Progress Bar
                     if (progress != -1 && max != -1) {
                         progressBar.setIndeterminate(false);
                         progressBar.setMax(max);
@@ -118,24 +119,23 @@ public class DropProgressActivity extends Activity {
                         progressBar.setIndeterminate(true);
                     }
                     
+                    // Update Progress Details (Transferred vs Total)
                     if (bytes != -1 && max != -1) {
                         String bytesStr = Formatter.formatFileSize(context, bytes);
-                        String maxStr = Formatter.formatFileSize(context, max);
-                        progressDetailsTextView.setText(String.format(Locale.US, "%s / %s", bytesStr, maxStr));
+                        // If max is representing file size
+                        progressDetailsTextView.setText(String.format(Locale.US, "Processed: %s", bytesStr));
                     } else {
                         progressDetailsTextView.setText("");
                     }
                     
                 } else if (ACTION_TRANSFER_COMPLETE.equals(action)) {
                     isTransferCompleteOrErrored = true;
-                    statusMajorTextView.setText("Transfer Complete!");
-                    statusMinorTextView.setText("You can now close this window.");
+                    statusMajorTextView.setText("Morphing Complete!");
+                    statusMinorTextView.setText("File safely reconstructed in Vault.");
                     progressBar.setIndeterminate(false);
                     progressBar.setProgress(progressBar.getMax());
                     cancelButton.setText("Done");
 
-                // --- THIS IS THE FIX ---
-                // We now listen for the same error action that HFMDropActivity uses.
                 } else if (DownloadService.ACTION_DOWNLOAD_ERROR.equals(action)) {
                     isTransferCompleteOrErrored = true;
                     statusMajorTextView.setText("Transfer Failed");
@@ -144,7 +144,6 @@ public class DropProgressActivity extends Activity {
                     progressBar.setProgress(0);
                     cancelButton.setText("Close");
 
-                    // Extract the error message and show the dialog
                     String errorReport = intent.getStringExtra(DownloadService.EXTRA_ERROR_MESSAGE);
                     if (errorReport != null && !errorReport.isEmpty()) {
                         showErrorDialog(errorReport);
@@ -156,7 +155,6 @@ public class DropProgressActivity extends Activity {
         };
     }
     
-    // --- NEW: Method to show the error dialog ---
     private void showErrorDialog(String errorReport) {
         if (isFinishing() || isDestroyed()) {
             return;
@@ -176,15 +174,12 @@ public class DropProgressActivity extends Activity {
         dialog.show();
     }
 
-
     @Override
     protected void onStart() {
         super.onStart();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_UPDATE_STATUS);
         filter.addAction(ACTION_TRANSFER_COMPLETE);
-        // --- THIS IS THE FIX ---
-        // Make this activity listen for the same error action as HFMDropActivity.
         filter.addAction(DownloadService.ACTION_DOWNLOAD_ERROR);
         LocalBroadcastManager.getInstance(this).registerReceiver(statusReceiver, filter);
     }
