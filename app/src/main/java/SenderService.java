@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -17,6 +18,8 @@ import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -34,6 +37,7 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class SenderService extends Service {
@@ -51,7 +55,6 @@ public class SenderService extends Service {
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
 
-    private File cloakedFile;
     private String dropRequestId;
     private ListenerRegistration requestListener;
 
@@ -74,7 +77,7 @@ public class SenderService extends Service {
             final String receiverUsername = intent.getStringExtra(EXTRA_RECEIVER_USERNAME);
             final String secretNumber = intent.getStringExtra(EXTRA_SECRET_NUMBER);
 
-            Notification notification = buildNotification("Starting Drop Send Service...", true);
+            Notification notification = buildNotification("Initializing Secure Drop...", true);
             startForeground(NOTIFICATION_ID, notification);
 
             Intent progressIntent = new Intent(this, DropProgressActivity.class);
@@ -95,87 +98,90 @@ public class SenderService extends Service {
     private void startSenderProcess(final String filePath, final String receiverUsername, final String secretNumber) {
         final File inputFile = new File(filePath);
         if (!inputFile.exists()) {
-            Log.e(TAG, "File to send does not exist: " + filePath);
             broadcastError("File not found at path: " + filePath);
             stopServiceAndCleanup(null);
             return;
         }
 
-        updateNotification("Cloaking data...", true);
-        broadcastStatus("Cloaking data...", "Please wait, this may take a moment...", -1, -1, -1);
-        cloakedFile = CloakingManager.cloakFile(this, inputFile, secretNumber);
-        if (cloakedFile == null) {
-            Log.e(TAG, "Cloaking file failed.");
-            broadcastError("Failed to cloak file for secure transfer.");
+        // Phase 1: Authentication & Smart Quota Check
+        GoogleSignInAccount driveAccount = GoogleSignIn.getLastSignedInAccount(this);
+        if (driveAccount == null) {
+            broadcastError("Google Drive authentication failed. Please sign in again.");
             stopServiceAndCleanup(null);
             return;
         }
 
-        updateNotification("Creating drop request...", true);
-        broadcastStatus("Creating Request...", "Contacting server...", -1, -1, -1);
+        updateNotification("Authenticating & Checking Quota...", true);
+        broadcastStatus("Verifying Cloud Storage...", "Please wait...", -1, -1, -1);
+        GoogleDriveManager driveManager = new GoogleDriveManager(this, driveAccount);
+
+        if (!driveManager.hasEnoughQuota(inputFile.length())) {
+            broadcastError("Not enough Google Drive space. Required: " + Formatter.formatFileSize(this, (long) (inputFile.length() * 1.1)) + " + decoys.");
+            stopServiceAndCleanup(null);
+            return;
+        }
+
+        // Phase 2: Polymorphic Sharding & Encryption (heavy lifting)
+        MorphedShardEngine shardEngine = new MorphedShardEngine(this, driveManager);
+        String encryptedManifestId = shardEngine.executeShardingAndUpload(inputFile, secretNumber, new MorphedShardEngine.ProgressListener() {
+            @Override
+            public void onProgress(int progress, int max, long bytesProcessed) {
+                updateNotification("Encrypting & Uploading... " + progress + "%", true);
+                broadcastStatus("Morphing Data...",
+                        String.format(Locale.US, "%s / %s",
+                                Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
+                                Formatter.formatFileSize(getApplicationContext(), inputFile.length())),
+                        progress, max, bytesProcessed);
+            }
+
+            @Override
+            public void onStatusUpdate(String minorStatus) {
+                updateNotification(minorStatus, true);
+                broadcastStatus("Morphing Data...", minorStatus, -1, -1, -1);
+            }
+        });
+
+        if (encryptedManifestId == null) {
+            broadcastError("Failed to shard and upload the file to Google Drive.");
+            stopServiceAndCleanup(null);
+            return;
+        }
+
+        // Phase 3: Firebase Handshake
+        updateNotification("Creating secure handshake...", true);
+        broadcastStatus("Creating Handshake...", "Contacting server...", -1, -1, -1);
         String senderUsername = generateUsernameFromUid(currentUser.getUid());
 
         Map<String, Object> dropRequest = new HashMap<>();
         dropRequest.put("senderId", currentUser.getUid());
         dropRequest.put("senderUsername", senderUsername);
         dropRequest.put("receiverUsername", receiverUsername);
-        dropRequest.put("filename", inputFile.getName());
-        dropRequest.put("cloakedFilename", cloakedFile.getName());
-        dropRequest.put("filesize", cloakedFile.length());
+        dropRequest.put("originalFilename", inputFile.getName());
+        dropRequest.put("encryptedManifestId", encryptedManifestId); // The KEY piece of information
+        dropRequest.put("filesize", inputFile.length()); // Send original size for receiver UI
         dropRequest.put("status", "pending");
-        dropRequest.put("secretNumber", secretNumber);
+        // The secret number is NEVER stored in Firebase. It's shared out-of-band.
         dropRequest.put("timestamp", System.currentTimeMillis());
-        dropRequest.put("magnetLink", null); // Placeholder
 
-        db.collection("drop_requests")
-                .add(dropRequest)
-                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                    @Override
-                    public void onSuccess(final DocumentReference documentReference) {
-                        dropRequestId = documentReference.getId();
-                        Log.d(TAG, "Drop request created with ID: " + dropRequestId);
-
-                        // Now that we have the ID, we can start seeding and get the magnet link
-                        updateNotification("Generating transfer link...", true);
-                        broadcastStatus("Generating Link...", "Preparing secure P2P session...", -1, -1, -1);
-
-                        String magnetLink = TorrentManager.getInstance(SenderService.this).startSeeding(cloakedFile, dropRequestId);
-
-                        if (magnetLink != null) {
-                            // Update the document with the magnet link
-                            documentReference.update("magnetLink", magnetLink)
-                                    .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                        @Override
-                                        public void onSuccess(Void aVoid) {
-                                            Log.d(TAG, "Successfully added magnet link to drop request.");
-                                            updateNotification("Waiting for receiver...", true);
-                                            broadcastStatus("Waiting for Receiver...", "Request sent. Waiting for acceptance.", -1, -1, -1);
-                                            listenForStatusChange(dropRequestId);
-                                        }
-                                    })
-                                    .addOnFailureListener(new OnFailureListener() {
-                                        @Override
-                                        public void onFailure(@NonNull Exception e) {
-                                            Log.e(TAG, "Failed to update drop request with magnet link.", e);
-                                            broadcastError("Failed to create secure link for the transfer.\n\n" + getStackTraceAsString(e));
-                                            stopServiceAndCleanup(null);
-                                        }
-                                    });
-                        } else {
-                            Log.e(TAG, "Failed to generate magnet link.");
-                            broadcastError("Failed to generate a secure link for the transfer.");
-                            stopServiceAndCleanup(null);
-                        }
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Log.e(TAG, "Failed to create drop request.", e);
-                        broadcastError("Failed to create drop request on server.\n\n" + getStackTraceAsString(e));
-                        stopServiceAndCleanup(null);
-                    }
-                });
+        db.collection("drop_requests").add(dropRequest)
+            .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                @Override
+                public void onSuccess(DocumentReference documentReference) {
+                    dropRequestId = documentReference.getId();
+                    Log.d(TAG, "Drop request created with ID: " + dropRequestId);
+                    updateNotification("Waiting for receiver...", true);
+                    broadcastStatus("Waiting for Receiver...", "Request sent. Waiting for acceptance.", -1, -1, -1);
+                    listenForStatusChange(dropRequestId);
+                }
+            })
+            .addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    Log.e(TAG, "Failed to create drop request.", e);
+                    broadcastError("Failed to create drop request on server.\n\n" + getStackTraceAsString(e));
+                    stopServiceAndCleanup(null);
+                }
+            });
     }
 
     private void broadcastStatus(String major, String minor, int progress, int max, long bytes) {
@@ -197,7 +203,6 @@ public class SenderService extends Service {
         Intent errorIntent = new Intent(DownloadService.ACTION_DOWNLOAD_ERROR);
         errorIntent.putExtra(DownloadService.EXTRA_ERROR_MESSAGE, message);
         LocalBroadcastManager.getInstance(this).sendBroadcast(errorIntent);
-
         LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(DropProgressActivity.ACTION_TRANSFER_ERROR));
     }
 
@@ -223,9 +228,8 @@ public class SenderService extends Service {
                     Log.d(TAG, "Drop request status changed to: " + status);
 
                     if ("accepted".equals(status)) {
-                        updateNotification("Receiver connected. Transferring...", true);
-                        broadcastStatus("Transferring...", "Sending file data...", -1, -1, -1);
-                        // libtorrent handles the connection automatically, no more hole punching needed.
+                        updateNotification("Receiver connected. Monitoring download...", true);
+                        broadcastStatus("Receiver Connected", "Monitoring secure download...", -1, -1, -1);
                     } else if ("declined".equals(status)) {
                         stopServiceAndCleanup("Receiver declined the transfer.");
                     } else if ("complete".equals(status)) {
@@ -238,7 +242,7 @@ public class SenderService extends Service {
                         stopServiceAndCleanup("An error occurred on the receiver's end.");
                     }
                 } else {
-                    Log.d(TAG, "Drop request document deleted by receiver.");
+                    Log.d(TAG, "Drop request document deleted by receiver (likely on completion or error).");
                     stopServiceAndCleanup(null);
                 }
             }
@@ -273,9 +277,6 @@ public class SenderService extends Service {
         if (requestListener != null) {
             requestListener.remove();
         }
-        if (cloakedFile != null && cloakedFile.exists()) {
-            cloakedFile.delete();
-        }
 
         if (dropRequestId != null) {
             db.collection("drop_requests").document(dropRequestId).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
@@ -285,12 +286,13 @@ public class SenderService extends Service {
                         DocumentSnapshot document = task.getResult();
                         if (document.exists()) {
                             String status = document.getString("status");
+                            // Only delete the request if it wasn't completed (e.g., user cancelled)
                             if (!"complete".equals(status)) {
                                 document.getReference().delete()
                                         .addOnSuccessListener(new OnSuccessListener<Void>() {
                                             @Override
                                             public void onSuccess(Void aVoid) {
-                                                Log.d(TAG, "Drop request document successfully deleted.");
+                                                Log.d(TAG, "Incomplete drop request document successfully deleted.");
                                             }
                                         });
                             }
@@ -325,6 +327,7 @@ public class SenderService extends Service {
                 .setContentText(text)
                 .setSmallIcon(android.R.drawable.ic_menu_upload)
                 .setOngoing(ongoing)
+                .setOnlyAlertOnce(true)
                 .build();
     }
 
