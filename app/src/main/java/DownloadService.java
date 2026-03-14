@@ -8,10 +8,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -19,6 +19,8 @@ import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -32,6 +34,7 @@ import com.google.firebase.firestore.ListenerRegistration;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Locale;
 
 public class DownloadService extends Service {
 
@@ -45,8 +48,6 @@ public class DownloadService extends Service {
     private FirebaseFirestore db;
     private ListenerRegistration requestListener;
     private String dropRequestId;
-    private String originalFilename;
-    private String cloakedFilename;
 
     @Override
     public void onCreate() {
@@ -59,19 +60,24 @@ public class DownloadService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             dropRequestId = intent.getStringExtra("drop_request_id");
-            final String magnetLink = intent.getStringExtra("magnet_link");
-            originalFilename = intent.getStringExtra("original_filename");
-            cloakedFilename = intent.getStringExtra("cloaked_filename");
+            // Note: The magnetLink, cloakedFilename, etc., are no longer needed.
+            // All necessary info will be fetched from the Firestore document.
 
-            Notification notification = buildNotification("Starting download...", true, 0, 0);
+            Notification notification = buildNotification("Initializing Secure Drop...", true, 0, 0);
             startForeground(NOTIFICATION_ID, notification);
 
-            startDownloadProcess(dropRequestId, magnetLink);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    startDownloadProcess(dropRequestId);
+                }
+            }).start();
         }
         return START_NOT_STICKY;
     }
 
-    private void startDownloadProcess(final String docId, final String magnetLink) {
+    private void startDownloadProcess(final String docId) {
+        // Phase 4 & 5: Reconstruction
         final DocumentReference docRef = db.collection("drop_requests").document(docId);
         listenForStatusChange(docRef);
 
@@ -83,30 +89,64 @@ public class DownloadService extends Service {
                     stopServiceAndCleanup(null);
                     return;
                 }
-                final String secretNumber = documentSnapshot.getString("secretNumber");
+                
+                final String encryptedManifestId = documentSnapshot.getString("encryptedManifestId");
+                final String secretNumber = documentSnapshot.getString("secretNumber"); // Still needed for manifest decryption
+                final long originalFilesize = documentSnapshot.getLong("filesize");
 
-                if (magnetLink == null || secretNumber == null) {
+                if (encryptedManifestId == null || secretNumber == null) {
                     broadcastError("Error: Incomplete transfer details from server.");
                     stopServiceAndCleanup(null);
                     return;
                 }
 
-                // Directory where the cloaked file will be saved by libtorrent
-                File publicDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "HFM Drop");
-                if (!publicDir.exists()) {
-                    publicDir.mkdirs();
+                // Authenticate with Google Drive
+                GoogleSignInAccount driveAccount = GoogleSignIn.getLastSignedInAccount(DownloadService.this);
+                if (driveAccount == null) {
+                    broadcastError("Google Drive authentication failed. Please sign in again.");
+                    stopServiceAndCleanup(null);
+                    return;
                 }
 
-                // The TorrentManager will handle the download in the background.
-                // We will receive progress updates and completion events via its AlertListener,
-                // which broadcasts intents to DropProgressActivity.
-                // The final restoration of the file is handled upon receiving the
-                // ACTION_TRANSFER_COMPLETE broadcast from the manager.
-                TorrentManager.getInstance(DownloadService.this).startDownload(magnetLink, publicDir, docId);
+                GoogleDriveManager driveManager = new GoogleDriveManager(DownloadService.this, driveAccount);
+                ReconstructionEngine reconstructionEngine = new ReconstructionEngine(DownloadService.this, driveManager);
+                SecureVaultManager vaultManager = new SecureVaultManager(DownloadService.this);
 
-                // Now we just wait for the TorrentManager to do its job.
-                // We will handle the file restoration in response to its completion broadcast.
-                handleFileRestorationOnComplete(publicDir, cloakedFilename, originalFilename, secretNumber);
+                // Create a destination file in the secure vault
+                File vaultFile = vaultManager.createVaultFile(documentSnapshot.getString("originalFilename"));
+
+                // Execute the reconstruction pipeline
+                String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
+                    @Override
+                    public void onProgress(int progress, int max, long bytesProcessed) {
+                        updateNotification("Reconstructing file... " + progress + "%", true, progress, max);
+                        broadcastStatus("Reconstructing...",
+                                String.format(Locale.US, "%s / %s",
+                                        Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
+                                        Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
+                                progress, max, bytesProcessed);
+                    }
+
+                    @Override
+                    public void onStatusUpdate(String minorStatus) {
+                        updateNotification(minorStatus, true, 0, 0);
+                        broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
+                    }
+                });
+
+                if (originalFileName != null) {
+                    docRef.update("status", "complete");
+                    updateNotification("Download Complete: " + originalFileName, false, 100, 100);
+                    broadcastComplete();
+                    // SecureVaultManager now handles the file. No need to scan it.
+                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                        FirebaseAuth.getInstance().getCurrentUser().delete();
+                    }
+                } else {
+                    docRef.update("status", "error");
+                    broadcastError("File reconstruction failed. The secret number may be incorrect or the file is corrupt.");
+                }
+                stopServiceAndCleanup(null);
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -116,67 +156,6 @@ public class DownloadService extends Service {
             }
         });
     }
-
-    private void handleFileRestorationOnComplete(final File downloadDir, final String cloakedFilename, final String originalFilename, final String secretNumber) {
-        // This method will be triggered by an event when the torrent is complete.
-        // For simplicity in this refactor, we are assuming the transfer will complete
-        // and the service will remain active. The TorrentManager broadcasts the completion.
-        // The service will then perform the final steps.
-
-        // In a more robust implementation, a BroadcastReceiver would be registered here
-        // to listen for ACTION_TRANSFER_COMPLETE from TorrentManager, but for now we proceed
-        // with the understanding that the logic flow is now managed by TorrentManager.
-        // The final part of the process is restoration:
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                File cloakedFile = new File(downloadDir, cloakedFilename);
-
-                // Wait for the file to be fully downloaded.
-                // This is a simplified polling mechanism. A BroadcastReceiver is the ideal solution.
-                while (!isDownloadConsideredComplete(cloakedFile)) {
-                    try {
-                        Thread.sleep(2000); // Poll every 2 seconds
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-
-                updateNotification("Restoring file...", true, 100, 100);
-                broadcastStatus("Restoring File...", "Decrypting and saving...", -1, -1, -1);
-
-                File finalFile = new File(downloadDir, originalFilename);
-                boolean success = CloakingManager.restoreFile(cloakedFile, finalFile, secretNumber);
-
-                if (success) {
-                    db.collection("drop_requests").document(dropRequestId).update("status", "complete");
-                    updateNotification("Download Complete", false, 100, 100);
-                    scanFile(finalFile);
-                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                        FirebaseAuth.getInstance().getCurrentUser().delete();
-                    }
-                    cloakedFile.delete(); // Clean up the cloaked file
-                } else {
-                    db.collection("drop_requests").document(dropRequestId).update("status", "error");
-                    broadcastError("Decryption failed. The secret number may be incorrect or the file may be corrupt.");
-                }
-                stopServiceAndCleanup(null);
-            }
-        }).start();
-    }
-    
-    // A simplified check. In a real scenario, this is replaced by the TorrentFinishedAlert.
-    private boolean isDownloadConsideredComplete(File file) {
-        // This is a placeholder for the event-driven completion.
-        // This service will now rely on DropProgressActivity receiving the complete broadcast
-        // and the user closing it. The service itself will perform cleanup.
-        // For the purpose of this refactor, we'll let the service stop when the transfer is complete
-        // as signaled by the TorrentManager's broadcasts. The actual file restoration
-        // is now conceptually part of the TorrentFinishedAlert handling flow.
-        return false; // This logic is now externalized to TorrentManager's events.
-    }
-
 
     private String getStackTraceAsString(Exception e) {
         StringWriter sw = new StringWriter();
@@ -194,29 +173,29 @@ public class DownloadService extends Service {
         intent.putExtra(DropProgressActivity.EXTRA_BYTES_TRANSFERRED, bytes);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
+    
+    private void broadcastComplete() {
+        Intent intent = new Intent(DropProgressActivity.ACTION_TRANSFER_COMPLETE);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
 
     private void broadcastError(String message) {
         Intent errorIntent = new Intent(ACTION_DOWNLOAD_ERROR);
         errorIntent.putExtra(EXTRA_ERROR_MESSAGE, message);
         LocalBroadcastManager.getInstance(this).sendBroadcast(errorIntent);
-
         LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(DropProgressActivity.ACTION_TRANSFER_ERROR));
     }
-
 
     private void listenForStatusChange(DocumentReference docRef) {
         requestListener = docRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
             @Override
             public void onEvent(DocumentSnapshot snapshot, FirebaseFirestoreException e) {
-                if (e != null) {
-                    return;
-                }
+                if (e != null) { return; }
                 if (snapshot != null && snapshot.exists()) {
                     String status = snapshot.getString("status");
                     if ("error".equals(status) || "declined".equals(status) || "cancelled".equals(status)) {
                          stopServiceAndCleanup("Transfer was cancelled or encountered an error.");
                     } else if ("complete".equals(status)) {
-                        // The sender has confirmed completion, we can stop.
                         stopServiceAndCleanup(null);
                     }
                 } else {
@@ -263,12 +242,6 @@ public class DownloadService extends Service {
         }
 
         stopForeground(true);
-    }
-
-    private void scanFile(File file) {
-        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-        mediaScanIntent.setData(Uri.fromFile(file));
-        sendBroadcast(mediaScanIntent);
     }
 
     private void createNotificationChannel() {
