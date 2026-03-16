@@ -13,6 +13,7 @@ import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import com.google.api.services.drive.model.Permission; // <-- NEW IMPORT
 
 import java.io.IOException;
 import java.util.Collections;
@@ -88,15 +89,39 @@ public class GoogleDriveManager {
                 .setFields("files(id)")
                 .execute();
 
+        String folderId;
         if (result.getFiles() != null && !result.getFiles().isEmpty()) {
-            return result.getFiles().get(0).getId();
+            folderId = result.getFiles().get(0).getId();
         } else {
             File folderMeta = new File();
             folderMeta.setName(MASTER_FOLDER_NAME);
             folderMeta.setMimeType("application/vnd.google-apps.folder");
             folderMeta.setParents(Collections.singletonList("root"));
             File createdFolder = driveService.files().create(folderMeta).setFields("id").execute();
-            return createdFolder.getId();
+            folderId = createdFolder.getId();
+        }
+
+        // --- NEW: Fix the Google Drive Permission Error ---
+        // Ensure the folder is readable by anyone with the link so the receiver can download the shards.
+        makeFolderPubliclyReadable(folderId);
+
+        return folderId;
+    }
+
+    /**
+     * Helper method to set the Google Drive permissions of a specific file/folder 
+     * to "Anyone with the link can view".
+     */
+    private void makeFolderPubliclyReadable(String fileId) {
+        try {
+            Permission permission = new Permission()
+                    .setType("anyone")
+                    .setRole("reader");
+            driveService.permissions().create(fileId, permission).execute();
+            Log.d(TAG, "Successfully set public read permission on Google Drive folder: " + fileId);
+        } catch (Exception e) {
+            // This might trigger if the permission already exists, which is fine.
+            Log.w(TAG, "Could not set permission or permission already exists.", e);
         }
     }
 
