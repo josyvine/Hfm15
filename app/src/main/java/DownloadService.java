@@ -60,8 +60,7 @@ public class DownloadService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             dropRequestId = intent.getStringExtra("drop_request_id");
-            // Note: The magnetLink, cloakedFilename, etc., are no longer needed.
-            // All necessary info will be fetched from the Firestore document.
+            final String passedSecretNumber = intent.getStringExtra("secret_number"); // Fetch PIN passed from UI
 
             Notification notification = buildNotification("Initializing Secure Drop...", true, 0, 0);
             startForeground(NOTIFICATION_ID, notification);
@@ -69,14 +68,15 @@ public class DownloadService extends Service {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    startDownloadProcess(dropRequestId);
+                    // Pass the PIN down into the processing thread
+                    startDownloadProcess(dropRequestId, passedSecretNumber);
                 }
             }).start();
         }
         return START_NOT_STICKY;
     }
 
-    private void startDownloadProcess(final String docId) {
+    private void startDownloadProcess(final String docId, final String secretNumber) {
         // Phase 4 & 5: Reconstruction
         final DocumentReference docRef = db.collection("drop_requests").document(docId);
         listenForStatusChange(docRef);
@@ -91,11 +91,17 @@ public class DownloadService extends Service {
                 }
                 
                 final String encryptedManifestId = documentSnapshot.getString("encryptedManifestId");
-                final String secretNumber = documentSnapshot.getString("secretNumber"); // Still needed for manifest decryption
                 final long originalFilesize = documentSnapshot.getLong("filesize");
 
-                if (encryptedManifestId == null || secretNumber == null) {
+                // Check ONLY what the server provides, and ensure the UI passed the PIN successfully
+                if (encryptedManifestId == null) {
                     broadcastError("Error: Incomplete transfer details from server.");
+                    stopServiceAndCleanup(null);
+                    return;
+                }
+
+                if (secretNumber == null || secretNumber.isEmpty()) {
+                    broadcastError("Error: Secret Number missing from receiver UI.");
                     stopServiceAndCleanup(null);
                     return;
                 }
@@ -115,7 +121,7 @@ public class DownloadService extends Service {
                 // Create a destination file in the secure vault
                 File vaultFile = vaultManager.createVaultFile(documentSnapshot.getString("originalFilename"));
 
-                // Execute the reconstruction pipeline
+                // Execute the reconstruction pipeline using the PIN from the UI
                 String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
                     @Override
                     public void onProgress(int progress, int max, long bytesProcessed) {
