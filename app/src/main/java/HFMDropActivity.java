@@ -14,6 +14,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -313,6 +314,31 @@ public class HFMDropActivity extends Activity {
             return;
         }
 
+        // Create an input dialog for the Secret Number
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Enter Secret Number");
+        builder.setMessage("Please enter the Secret Number provided by the sender to decrypt this transfer:");
+
+        final EditText input = new EditText(this);
+        input.setHint("16-character Secret Number");
+        builder.setView(input);
+
+        builder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String secretNumber = input.getText().toString().trim();
+                if (secretNumber.isEmpty()) {
+                    Toast.makeText(HFMDropActivity.this, "Secret Number cannot be empty.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                proceedWithAccept(request, secretNumber);
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void proceedWithAccept(final DropRequest request, final String secretNumber) {
         Map<String, Object> updates = new HashMap<>();
         updates.put("status", "accepted");
         updates.put("receiverId", currentUser.getUid());
@@ -325,7 +351,7 @@ public class HFMDropActivity extends Activity {
 
                         Intent serviceIntent = new Intent(HFMDropActivity.this, DownloadService.class);
                         serviceIntent.putExtra("drop_request_id", request.id);
-                        // The service will fetch the rest of the details from Firestore using the ID
+                        serviceIntent.putExtra("secret_number", secretNumber); // Pass the PIN to the Service
                         ContextCompat.startForegroundService(HFMDropActivity.this, serviceIntent);
 
                         Intent progressIntent = new Intent(HFMDropActivity.this, DropProgressActivity.class);
