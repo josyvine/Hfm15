@@ -107,7 +107,7 @@ public class MainActivity extends Activity {
     private void setupGoogleDriveAuth() {
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
-                .requestScopes(new Scope(DriveScopes.DRIVE_FILE))
+                .requestScopes(new Scope(DriveScopes.DRIVE)) // CHANGED: DRIVE_FILE to DRIVE
                 .build();
         googleSignInClient = GoogleSignIn.getClient(this, gso);
     }
@@ -202,11 +202,13 @@ public class MainActivity extends Activity {
                 Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
                 try {
                     GoogleSignInAccount account = task.getResult(ApiException.class);
-                    if (account != null && GoogleSignIn.hasPermissions(account, new Scope(DriveScopes.DRIVE_FILE))) {
+                    // CHANGED: DRIVE_FILE to DRIVE
+                    if (account != null && GoogleSignIn.hasPermissions(account, new Scope(DriveScopes.DRIVE))) {
                         Toast.makeText(this, "Google Drive Connected!", Toast.LENGTH_SHORT).show();
                         updateWebViewDriveStatus(true);
                     } else {
-                        GoogleSignIn.requestPermissions(this, GOOGLE_DRIVE_SIGNIN_REQUEST_CODE, account, new Scope(DriveScopes.DRIVE_FILE));
+                        // CHANGED: DRIVE_FILE to DRIVE
+                        GoogleSignIn.requestPermissions(this, GOOGLE_DRIVE_SIGNIN_REQUEST_CODE, account, new Scope(DriveScopes.DRIVE));
                     }
                 } catch (ApiException e) {
                     Log.e(TAG, "Google Sign-In failed", e);
@@ -453,7 +455,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean isDriveLoggedIn() {
             GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(mContext);
-            return account != null && GoogleSignIn.hasPermissions(account, new Scope(DriveScopes.DRIVE_FILE));
+            // CHANGED: DRIVE_FILE to DRIVE
+            return account != null && GoogleSignIn.hasPermissions(account, new Scope(DriveScopes.DRIVE));
         }
 
         @JavascriptInterface
