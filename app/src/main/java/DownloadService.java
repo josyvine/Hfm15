@@ -60,7 +60,10 @@ public class DownloadService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             dropRequestId = intent.getStringExtra("drop_request_id");
-            final String passedSecretNumber = intent.getStringExtra("secret_number"); // Fetch PIN passed from UI
+            String rawSecretNumber = intent.getStringExtra("secret_number"); 
+            
+            // --- CRITICAL FIX: Sanitize the PIN to remove invisible clipboard line-breaks ---
+            final String passedSecretNumber = (rawSecretNumber != null) ? rawSecretNumber.replaceAll("\\s+", "") : null;
 
             Notification notification = buildNotification("Initializing Secure Drop...", true, 0, 0);
             startForeground(NOTIFICATION_ID, notification);
@@ -68,7 +71,7 @@ public class DownloadService extends Service {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    // Pass the PIN down into the processing thread
+                    // Pass the sanitized PIN down into the processing thread
                     startDownloadProcess(dropRequestId, passedSecretNumber);
                 }
             }).start();
@@ -121,38 +124,47 @@ public class DownloadService extends Service {
                 // Create a destination file in the secure vault
                 File vaultFile = vaultManager.createVaultFile(documentSnapshot.getString("originalFilename"));
 
-                // Execute the reconstruction pipeline using the PIN from the UI
-                String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
-                    @Override
-                    public void onProgress(int progress, int max, long bytesProcessed) {
-                        updateNotification("Reconstructing file... " + progress + "%", true, progress, max);
-                        broadcastStatus("Reconstructing...",
-                                String.format(Locale.US, "%s / %s",
-                                        Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
-                                        Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
-                                progress, max, bytesProcessed);
-                    }
+                // --- CRITICAL FIX: Catch the raw Java Exception and broadcast it to the UI ---
+                try {
+                    String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
+                        @Override
+                        public void onProgress(int progress, int max, long bytesProcessed) {
+                            updateNotification("Reconstructing file... " + progress + "%", true, progress, max);
+                            broadcastStatus("Reconstructing...",
+                                    String.format(Locale.US, "%s / %s",
+                                            Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
+                                            Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
+                                    progress, max, bytesProcessed);
+                        }
 
-                    @Override
-                    public void onStatusUpdate(String minorStatus) {
-                        updateNotification(minorStatus, true, 0, 0);
-                        broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
-                    }
-                });
+                        @Override
+                        public void onStatusUpdate(String minorStatus) {
+                            updateNotification(minorStatus, true, 0, 0);
+                            broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
+                        }
+                    });
 
-                if (originalFileName != null) {
+                    // If we reach this line, reconstruction was successful
                     docRef.update("status", "complete");
                     updateNotification("Download Complete: " + originalFileName, false, 100, 100);
                     broadcastComplete();
-                    // SecureVaultManager now handles the file. No need to scan it.
+                    
                     if (FirebaseAuth.getInstance().getCurrentUser() != null) {
                         FirebaseAuth.getInstance().getCurrentUser().delete();
                     }
-                } else {
+                    stopServiceAndCleanup(null);
+
+                } catch (Exception e) {
+                    // The engine threw a fatal error (Google Drive API or AES Decryption)
                     docRef.update("status", "error");
-                    broadcastError("File reconstruction failed. The secret number may be incorrect or the file is corrupt.");
+                    
+                    // Extract the massive, detailed Java stack trace
+                    String exactErrorLog = getStackTraceAsString(e);
+                    
+                    // Broadcast the raw error log to the screen instead of the generic string
+                    broadcastError("FATAL RECONSTRUCTION ERROR:\n\n" + exactErrorLog);
+                    stopServiceAndCleanup(null);
                 }
-                stopServiceAndCleanup(null);
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
