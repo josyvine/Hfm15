@@ -86,7 +86,7 @@ public class DownloadService extends Service {
 
         docRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
             @Override
-            public void onSuccess(DocumentSnapshot documentSnapshot) {
+            public void onSuccess(final DocumentSnapshot documentSnapshot) {
                 if (!documentSnapshot.exists()) {
                     broadcastError("Error: Drop request not found.");
                     stopServiceAndCleanup(null);
@@ -117,54 +117,59 @@ public class DownloadService extends Service {
                     return;
                 }
 
-                GoogleDriveManager driveManager = new GoogleDriveManager(DownloadService.this, driveAccount);
-                ReconstructionEngine reconstructionEngine = new ReconstructionEngine(DownloadService.this, driveManager);
-                SecureVaultManager vaultManager = new SecureVaultManager(DownloadService.this);
+                final GoogleDriveManager driveManager = new GoogleDriveManager(DownloadService.this, driveAccount);
+                final ReconstructionEngine reconstructionEngine = new ReconstructionEngine(DownloadService.this, driveManager);
+                final SecureVaultManager vaultManager = new SecureVaultManager(DownloadService.this);
 
                 // Create a destination file in the secure vault
-                File vaultFile = vaultManager.createVaultFile(documentSnapshot.getString("originalFilename"));
+                final File vaultFile = vaultManager.createVaultFile(documentSnapshot.getString("originalFilename"));
 
-                // --- CRITICAL FIX: Catch the raw Java Exception and broadcast it to the UI ---
-                try {
-                    String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
-                        @Override
-                        public void onProgress(int progress, int max, long bytesProcessed) {
-                            updateNotification("Reconstructing file... " + progress + "%", true, progress, max);
-                            broadcastStatus("Reconstructing...",
-                                    String.format(Locale.US, "%s / %s",
-                                            Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
-                                            Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
-                                    progress, max, bytesProcessed);
+                // --- CRITICAL FIX: Move heavy network/crypto logic completely off the Main Thread ---
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
+                                @Override
+                                public void onProgress(int progress, int max, long bytesProcessed) {
+                                    updateNotification("Reconstructing file... " + progress + "%", true, progress, max);
+                                    broadcastStatus("Reconstructing...",
+                                            String.format(Locale.US, "%s / %s",
+                                                    Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
+                                                    Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
+                                            progress, max, bytesProcessed);
+                                }
+
+                                @Override
+                                public void onStatusUpdate(String minorStatus) {
+                                    updateNotification(minorStatus, true, 0, 0);
+                                    broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
+                                }
+                            });
+
+                            // If we reach this line, reconstruction was successful
+                            docRef.update("status", "complete");
+                            updateNotification("Download Complete: " + originalFileName, false, 100, 100);
+                            broadcastComplete();
+                            
+                            if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                                FirebaseAuth.getInstance().getCurrentUser().delete();
+                            }
+                            stopServiceAndCleanup(null);
+
+                        } catch (Exception e) {
+                            // The engine threw a fatal error (Google Drive API or AES Decryption)
+                            docRef.update("status", "error");
+                            
+                            // Extract the massive, detailed Java stack trace
+                            String exactErrorLog = getStackTraceAsString(e);
+                            
+                            // Broadcast the raw error log to the screen instead of the generic string
+                            broadcastError("FATAL RECONSTRUCTION ERROR:\n\n" + exactErrorLog);
+                            stopServiceAndCleanup(null);
                         }
-
-                        @Override
-                        public void onStatusUpdate(String minorStatus) {
-                            updateNotification(minorStatus, true, 0, 0);
-                            broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
-                        }
-                    });
-
-                    // If we reach this line, reconstruction was successful
-                    docRef.update("status", "complete");
-                    updateNotification("Download Complete: " + originalFileName, false, 100, 100);
-                    broadcastComplete();
-                    
-                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                        FirebaseAuth.getInstance().getCurrentUser().delete();
                     }
-                    stopServiceAndCleanup(null);
-
-                } catch (Exception e) {
-                    // The engine threw a fatal error (Google Drive API or AES Decryption)
-                    docRef.update("status", "error");
-                    
-                    // Extract the massive, detailed Java stack trace
-                    String exactErrorLog = getStackTraceAsString(e);
-                    
-                    // Broadcast the raw error log to the screen instead of the generic string
-                    broadcastError("FATAL RECONSTRUCTION ERROR:\n\n" + exactErrorLog);
-                    stopServiceAndCleanup(null);
-                }
+                }).start();
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
