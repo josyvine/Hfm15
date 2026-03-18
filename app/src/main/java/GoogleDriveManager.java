@@ -13,7 +13,7 @@ import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
-import com.google.api.services.drive.model.Permission; // <-- NEW IMPORT
+import com.google.api.services.drive.model.Permission;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -29,8 +29,9 @@ public class GoogleDriveManager {
      * Initializes the Google Drive API v3 service.
      */
     public GoogleDriveManager(Context context, GoogleSignInAccount account) {
+        // --- CHANGED: DRIVE_FILE to DRIVE ---
         GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
-                context, Collections.singleton(DriveScopes.DRIVE_FILE));
+                context, Collections.singleton(DriveScopes.DRIVE));
         credential.setSelectedAccount(account.getAccount());
 
         driveService = new Drive.Builder(
