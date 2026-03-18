@@ -52,9 +52,9 @@ public class ReconstructionEngine {
      * @param secretNumber   The user-provided PIN to decrypt the manifest.
      * @param vaultFile      The secure destination file provided by SecureVaultManager.
      * @param listener       Callback for real-time UI updates.
-     * @return The original file name if successful, or null if reconstruction failed.
+     * @return The original file name if successful, throws Exception if reconstruction failed.
      */
-    public String executeReconstruction(String manifestFileId, String secretNumber, File vaultFile, ProgressListener listener) {
+    public String executeReconstruction(String manifestFileId, String secretNumber, File vaultFile, ProgressListener listener) throws Exception {
         FileOutputStream fos = null;
         try {
             // 1. Download the Encrypted Manifest
@@ -67,8 +67,7 @@ public class ReconstructionEngine {
             listener.onStatusUpdate("Decrypting manifest blueprint...");
             String manifestJsonString = decryptManifest(encryptedManifestBytes, secretNumber);
             if (manifestJsonString == null) {
-                Log.e(TAG, "Manifest decryption failed. Invalid PIN or corrupted data.");
-                return null;
+                throw new Exception("Manifest decryption returned null. Invalid PIN or corrupted data.");
             }
 
             JSONObject manifest = new JSONObject(manifestJsonString);
@@ -155,7 +154,7 @@ public class ReconstructionEngine {
             if (vaultFile != null && vaultFile.exists()) {
                 vaultFile.delete(); // Wipe corrupted/partial file on failure
             }
-            return null;
+            throw e; // Pass the exact Java error (Drive API or Crypto failure) back to the service
         } finally {
             if (fos != null) {
                 try { fos.close(); } catch (IOException ignored) {}
@@ -166,33 +165,29 @@ public class ReconstructionEngine {
     /**
      * Decrypts the JSON Manifest using the Secret Number (PIN) provided by the receiver.
      */
-    private String decryptManifest(byte[] encryptedDataWithIv, String secretNumber) {
-        try {
-            // The first 12 bytes are the GCM IV
-            if (encryptedDataWithIv.length < 12) return null;
-
-            byte[] iv = new byte[12];
-            System.arraycopy(encryptedDataWithIv, 0, iv, 0, 12);
-
-            byte[] cipherText = new byte[encryptedDataWithIv.length - 12];
-            System.arraycopy(encryptedDataWithIv, 12, cipherText, 0, cipherText.length);
-
-            // Derive the key using the exact same PBKDF2 logic as the sender
-            SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM);
-            KeySpec spec = new PBEKeySpec(secretNumber.toCharArray(), SALT.getBytes(StandardCharsets.UTF_8), 65536, 256);
-            SecretKey tmp = factory.generateSecret(spec);
-            SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
-
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
-
-            byte[] decryptedBytes = cipher.doFinal(cipherText);
-            return new String(decryptedBytes, StandardCharsets.UTF_8);
-
-        } catch (Exception e) {
-            Log.e(TAG, "Manifest decryption failed", e);
-            return null;
+    private String decryptManifest(byte[] encryptedDataWithIv, String secretNumber) throws Exception {
+        // The first 12 bytes are the GCM IV
+        if (encryptedDataWithIv.length < 12) {
+            throw new Exception("Encrypted data is too short to contain IV.");
         }
+
+        byte[] iv = new byte[12];
+        System.arraycopy(encryptedDataWithIv, 0, iv, 0, 12);
+
+        byte[] cipherText = new byte[encryptedDataWithIv.length - 12];
+        System.arraycopy(encryptedDataWithIv, 12, cipherText, 0, cipherText.length);
+
+        // Derive the key using the exact same PBKDF2 logic as the sender
+        SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM);
+        KeySpec spec = new PBEKeySpec(secretNumber.toCharArray(), SALT.getBytes(StandardCharsets.UTF_8), 65536, 256);
+        SecretKey tmp = factory.generateSecret(spec);
+        SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
+
+        byte[] decryptedBytes = cipher.doFinal(cipherText);
+        return new String(decryptedBytes, StandardCharsets.UTF_8);
     }
 }
