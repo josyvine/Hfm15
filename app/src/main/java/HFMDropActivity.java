@@ -56,6 +56,7 @@ public class HFMDropActivity extends Activity {
     private ImageButton backButton;
     private TextView usernameTextView;
     private Button regenerateIdButton;
+    private Button openVaultButton; // NEW
     private RecyclerView requestsRecyclerView;
     private ProgressBar loadingRequestsProgress;
     private TextView emptyViewRequests;
@@ -106,6 +107,7 @@ public class HFMDropActivity extends Activity {
         backButton = findViewById(R.id.back_button_hfm_drop);
         usernameTextView = findViewById(R.id.username_text_view);
         regenerateIdButton = findViewById(R.id.regenerate_id_button);
+        openVaultButton = findViewById(R.id.open_vault_button); // NEW
         requestsRecyclerView = findViewById(R.id.requests_recycler_view);
         loadingRequestsProgress = findViewById(R.id.loading_requests_progress);
         emptyViewRequests = findViewById(R.id.empty_view_requests);
@@ -155,6 +157,15 @@ public class HFMDropActivity extends Activity {
                         })
                         .setNegativeButton("Cancel", null)
                         .show();
+            }
+        });
+
+        // NEW: Listener to open the Vault Browser
+        openVaultButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(HFMDropActivity.this, VaultBrowserActivity.class);
+                startActivity(intent);
             }
         });
     }
