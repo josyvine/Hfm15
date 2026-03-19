@@ -281,6 +281,13 @@
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:exported="false"/>
 
+        <!-- NEW: Vault Browser Activity -->
+        <activity
+            android:name=".VaultBrowserActivity"
+            android:label="Secure Vault"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:exported="false" />
+
         <!-- NEW: LIVE DELETION MONITOR POPUP -->
         <activity
             android:name=".DeletionMonitorActivity"
