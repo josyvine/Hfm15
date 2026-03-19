@@ -71,6 +71,15 @@
             android:text="Regenerate ID"
             android:enabled="false"/>
 
+        <!-- NEW: Open Secure Vault Button -->
+        <Button
+            android:id="@+id/open_vault_button"
+            style="@style/AppButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Open Secure Vault" />
+
     </LinearLayout>
 
     <!-- Drop Requests Section -->
