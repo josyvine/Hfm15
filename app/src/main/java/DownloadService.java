@@ -150,7 +150,9 @@ public class DownloadService extends Service {
                             // If we reach this line, reconstruction was successful
                             docRef.update("status", "complete");
                             updateNotification("Download Complete: " + originalFileName, false, 100, 100);
-                            broadcastComplete();
+                            
+                            // NEW: Pass the variables to the broadcast for secure playback
+                            broadcastComplete(originalFileName, vaultFile.getAbsolutePath());
                             
                             if (FirebaseAuth.getInstance().getCurrentUser() != null) {
                                 FirebaseAuth.getInstance().getCurrentUser().delete();
@@ -197,8 +199,11 @@ public class DownloadService extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
     
-    private void broadcastComplete() {
+    // NEW: Updated to pass filename and path to intent extras
+    private void broadcastComplete(String originalFileName, String vaultFilePath) {
         Intent intent = new Intent(DropProgressActivity.ACTION_TRANSFER_COMPLETE);
+        intent.putExtra("original_file_name", originalFileName);
+        intent.putExtra("vault_file_path", vaultFilePath);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
