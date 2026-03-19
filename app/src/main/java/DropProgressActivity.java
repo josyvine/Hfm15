@@ -134,7 +134,24 @@ public class DropProgressActivity extends Activity {
                     statusMinorTextView.setText("File safely reconstructed in Vault.");
                     progressBar.setIndeterminate(false);
                     progressBar.setProgress(progressBar.getMax());
-                    cancelButton.setText("Done");
+                    
+                    // --- NEW IMMEDIATE PLAYBACK LOGIC ---
+                    final String originalFileName = intent.getStringExtra("original_file_name");
+                    final String vaultFilePath = intent.getStringExtra("vault_file_path");
+
+                    if (!isSender && vaultFilePath != null && originalFileName != null) {
+                        cancelButton.setText("Play File");
+                        cancelButton.setBackgroundColor(android.graphics.Color.parseColor("#4f46e5")); // Highlight button
+                        cancelButton.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                java.io.File vaultFile = new java.io.File(vaultFilePath);
+                                new SecureVaultManager(DropProgressActivity.this).playSecurely(vaultFile, originalFileName);
+                            }
+                        });
+                    } else {
+                        cancelButton.setText("Done");
+                    }
 
                 } else if (DownloadService.ACTION_DOWNLOAD_ERROR.equals(action)) {
                     isTransferCompleteOrErrored = true;
