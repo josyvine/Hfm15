@@ -1,6 +1,10 @@
 package com.hfm.app;
 
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
@@ -18,6 +22,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.UUID;
 
 /**
@@ -115,7 +121,27 @@ public class SecureVaultManager {
 
         } catch (Exception e) {
             Log.e(TAG, "Secure playback failed", e);
-            Toast.makeText(context, "Failed to prepare secure playback.", Toast.LENGTH_SHORT).show();
+            
+            // --- NEW: DETAILED ERROR REPORTING UI ---
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            final String detailedError = sw.toString();
+
+            new AlertDialog.Builder(context)
+                .setTitle("Secure Playback Error")
+                .setMessage(detailedError)
+                .setPositiveButton("Copy Error", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                        ClipData clip = ClipData.newPlainText("HFM_Detailed_Error", detailedError);
+                        clipboard.setPrimaryClip(clip);
+                        Toast.makeText(context, "Error details copied to clipboard.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Close", null)
+                .show();
         }
     }
 
