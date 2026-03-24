@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.UUID;
 
 /**
@@ -74,73 +73,29 @@ public class SecureVaultManager {
 
     /**
      * Secure Playback System:
-     * Asks the user if they want to use the internal RAM player or an external player.
+     * Decrypts (if necessary) or copies the vault file to a temporary cache, 
+     * grants FileProvider URI permissions to an external app, and attaches the Kill-Switch.
      * 
      * @param vaultFile The file stored in the secure vault.
-     * @param originalFileName The real name of the file.
+     * @param originalFileName The real name of the file (used for MIME type resolution).
      */
-    public void playSecurely(final File vaultFile, final String originalFileName) {
+    public void playSecurely(File vaultFile, String originalFileName) {
         if (!vaultFile.exists()) {
             Toast.makeText(context, "Secure file not found.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // --- NEW: DUAL OPTION SELECTION DIALOG ---
-        // This resolves your feedback that the app "didn't ask for dual option mode"
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Secure Playback Mode");
-        builder.setMessage("How would you like to view this file?");
-
-        builder.setPositiveButton("Internal HFM Player", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // Mode 1: Internal RAM Playback (Uses your VideoViewerActivity)
-                openInternalPlayer(vaultFile);
-            }
-        });
-
-        builder.setNeutralButton("External Player", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // Mode 2: External Player (The logic that needs file_provider_paths.xml)
-                executeExternalPlayback(vaultFile, originalFileName);
-            }
-        });
-
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
-    }
-
-    /**
-     * Mode 1: Opens the internal VideoViewerActivity.
-     * This is the "RAM Mode" because it plays the file directly from the vault without a temp copy.
-     */
-    private void openInternalPlayer(File vaultFile) {
-        try {
-            ArrayList<String> fileList = new ArrayList<>();
-            fileList.add(vaultFile.getAbsolutePath());
-
-            Intent intent = new Intent(context, VideoViewerActivity.class);
-            intent.putStringArrayListExtra(VideoViewerActivity.EXTRA_FILE_PATH_LIST, fileList);
-            intent.putExtra(VideoViewerActivity.EXTRA_CURRENT_INDEX, 0);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(context, "Internal player error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * Mode 2: Copies the file to cache and uses FileProvider to trigger VLC/MX Player.
-     */
-    private void executeExternalPlayback(File vaultFile, String originalFileName) {
         File tempCacheDir = new File(context.getCacheDir(), TEMP_PLAYBACK_DIR);
         if (!tempCacheDir.exists()) tempCacheDir.mkdirs();
 
+        // The temporary file must have the correct extension for players like VLC to recognize it
         final File tempPlayFile = new File(tempCacheDir, originalFileName);
 
         try {
-            // Copy file to secure_cache folder
+            // Decrypt or Stream the file to the temp cache.
+            // (For this architecture, the ReconstructionEngine already decrypts it to the Vault.
+            // If you want the Vault to remain encrypted at rest, you would decrypt it here.
+            // For now, we copy it to the cache so the external player can't access the raw vault).
             copyToCache(vaultFile, tempPlayFile);
 
             // Generate strict read-only URI via FileProvider
@@ -166,8 +121,8 @@ public class SecureVaultManager {
 
         } catch (Exception e) {
             Log.e(TAG, "Secure playback failed", e);
-
-            // DETAILED ERROR DIAGNOSTIC POPUP (The "White Box" error you saw)
+            
+            // --- NEW: DETAILED ERROR REPORTING UI ---
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
             e.printStackTrace(pw);
@@ -192,14 +147,18 @@ public class SecureVaultManager {
 
     /**
      * The Kill-Switch: Monitors the app's lifecycle.
-     * The moment HFM comes back into the foreground, it shreds the cache file.
+     * The moment HFM comes back into the foreground (meaning the external player closed),
+     * it zeroes out the memory of the cache file and deletes it permanently.
      */
     private void activatePlaybackKillSwitch(final File tempFile) {
         ProcessLifecycleOwner.get().getLifecycle().addObserver(new DefaultLifecycleObserver() {
             @Override
             public void onStart(LifecycleOwner owner) {
+                // The app has returned to the foreground. External playback is over.
                 Log.d(TAG, "Kill-Switch Activated: Shredding secure cache file.");
                 shredFile(tempFile);
+                
+                // Remove the observer so it doesn't fire repeatedly
                 ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
             }
         });
@@ -213,6 +172,7 @@ public class SecureVaultManager {
         try {
             long length = file.length();
             FileOutputStream fos = new FileOutputStream(file);
+            // Write zeroes to overwrite the data on disk
             byte[] zeroes = new byte[8192];
             long written = 0;
             while (written < length) {
@@ -222,6 +182,7 @@ public class SecureVaultManager {
             }
             fos.flush();
             fos.close();
+            // Finally, delete the physical file
             file.delete();
             Log.d(TAG, "File successfully shredded.");
         } catch (IOException e) {
