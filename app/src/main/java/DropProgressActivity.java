@@ -135,17 +135,19 @@ public class DropProgressActivity extends Activity {
                     progressBar.setIndeterminate(false);
                     progressBar.setProgress(progressBar.getMax());
                     
-                    // --- NEW IMMEDIATE PLAYBACK LOGIC ---
+                    // --- RE-INTEGRATED PLAYBACK LOGIC ---
                     final String originalFileName = intent.getStringExtra("original_file_name");
                     final String vaultFilePath = intent.getStringExtra("vault_file_path");
 
                     if (!isSender && vaultFilePath != null && originalFileName != null) {
                         cancelButton.setText("Play File");
-                        cancelButton.setBackgroundColor(android.graphics.Color.parseColor("#4f46e5")); // Highlight button
+                        // Hex color preserved from original logic
+                        cancelButton.setBackgroundColor(android.graphics.Color.parseColor("#4f46e5")); 
                         cancelButton.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
                                 java.io.File vaultFile = new java.io.File(vaultFilePath);
+                                // Logic: Call updated playSecurely to show the choice dialog
                                 new SecureVaultManager(DropProgressActivity.this).playSecurely(vaultFile, originalFileName);
                             }
                         });
