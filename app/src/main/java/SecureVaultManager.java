@@ -8,7 +8,10 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.webkit.MimeTypeMap;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
@@ -24,6 +27,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -72,43 +78,104 @@ public class SecureVaultManager {
     }
 
     /**
-     * Secure Playback System:
-     * Decrypts (if necessary) or copies the vault file to a temporary cache, 
-     * grants FileProvider URI permissions to an external app, and attaches the Kill-Switch.
-     * 
-     * @param vaultFile The file stored in the secure vault.
-     * @param originalFileName The real name of the file (used for MIME type resolution).
+     * MAIN ENTRY POINT: Updated to show Choice Dialog (Internal vs External)
      */
-    public void playSecurely(File vaultFile, String originalFileName) {
+    public void playSecurely(final File vaultFile, final String originalFileName) {
         if (!vaultFile.exists()) {
             Toast.makeText(context, "Secure file not found.", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Secure Playback");
+        builder.setMessage("How would you like to play this file?");
+        
+        builder.setPositiveButton("RAM Mode (Internal)", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                handleInternalPlayback(vaultFile, originalFileName);
+            }
+        });
+        
+        builder.setNeutralButton("External Player", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                handleExternalPlayback(vaultFile, originalFileName);
+            }
+        });
+        
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    /**
+     * MODE 1: INTERNAL RAM PLAYBACK
+     * Logic: Starts the internal app activity corresponding to the file type.
+     */
+    private void handleInternalPlayback(File vaultFile, String originalFileName) {
+        try {
+            String path = vaultFile.getAbsolutePath();
+            String ext = getExtension(originalFileName);
+            Intent intent = null;
+
+            if (isImage(ext)) {
+                ArrayList<String> list = new ArrayList<>();
+                list.add(path);
+                intent = new Intent(context, ImageViewerActivity.class);
+                intent.putStringArrayListExtra(ImageViewerActivity.EXTRA_FILE_PATH_LIST, list);
+                intent.putExtra(ImageViewerActivity.EXTRA_CURRENT_INDEX, 0);
+            } else if (isVideo(ext)) {
+                ArrayList<String> list = new ArrayList<>();
+                list.add(path);
+                intent = new Intent(context, VideoViewerActivity.class);
+                intent.putStringArrayListExtra(VideoViewerActivity.EXTRA_FILE_PATH_LIST, list);
+                intent.putExtra(VideoViewerActivity.EXTRA_CURRENT_INDEX, 0);
+            } else if (isAudio(ext)) {
+                ArrayList<String> list = new ArrayList<>();
+                list.add(path);
+                intent = new Intent(context, AudioPlayerActivity.class);
+                intent.putStringArrayListExtra(AudioPlayerActivity.EXTRA_FILE_PATH_LIST, list);
+                intent.putExtra(AudioPlayerActivity.EXTRA_CURRENT_INDEX, 0);
+            } else if (ext.equals("pdf")) {
+                intent = new Intent(context, PdfViewerActivity.class);
+                intent.putExtra(PdfViewerActivity.EXTRA_FILE_PATH, path);
+            } else {
+                intent = new Intent(context, TextViewerActivity.class);
+                intent.putExtra(TextViewerActivity.EXTRA_FILE_PATH, path);
+            }
+
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+            }
+        } catch (Exception e) {
+            showDetailedErrorDialog("Internal Playback Error", e);
+        }
+    }
+
+    /**
+     * MODE 2: EXTERNAL MEDIA PLAYER (Disk/Cache Mode)
+     * Logic: Copies file to cache, fires Intent with FileProvider, activates Kill-Switch.
+     */
+    private void handleExternalPlayback(File vaultFile, String originalFileName) {
         File tempCacheDir = new File(context.getCacheDir(), TEMP_PLAYBACK_DIR);
         if (!tempCacheDir.exists()) tempCacheDir.mkdirs();
 
-        // The temporary file must have the correct extension for players like VLC to recognize it
         final File tempPlayFile = new File(tempCacheDir, originalFileName);
 
         try {
-            // Decrypt or Stream the file to the temp cache.
-            // (For this architecture, the ReconstructionEngine already decrypts it to the Vault.
-            // If you want the Vault to remain encrypted at rest, you would decrypt it here.
-            // For now, we copy it to the cache so the external player can't access the raw vault).
+            // Your original 8192-byte buffer loop logic
             copyToCache(vaultFile, tempPlayFile);
 
-            // Generate strict read-only URI via FileProvider
+            // Generate URI via FileProvider using authority com.hfm.app.provider
             Uri fileUri = FileProvider.getUriForFile(
                     context, 
-                    context.getPackageName() + ".provider", 
+                    "com.hfm.app.provider", 
                     tempPlayFile
             );
 
-            // Resolve MIME type
             String mimeType = getMimeType(originalFileName);
 
-            // Fire Intent
             Intent playIntent = new Intent(Intent.ACTION_VIEW);
             playIntent.setDataAndType(fileUri, mimeType);
             playIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -116,63 +183,37 @@ public class SecureVaultManager {
 
             context.startActivity(playIntent);
 
-            // Activate the Kill-Switch
+            // Activate your ProcessLifecycleOwner Kill-Switch
             activatePlaybackKillSwitch(tempPlayFile);
 
         } catch (Exception e) {
-            Log.e(TAG, "Secure playback failed", e);
-            
-            // --- NEW: DETAILED ERROR REPORTING UI ---
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            final String detailedError = sw.toString();
-
-            new AlertDialog.Builder(context)
-                .setTitle("Secure Playback Error")
-                .setMessage(detailedError)
-                .setPositiveButton("Copy Error", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-                        ClipData clip = ClipData.newPlainText("HFM_Detailed_Error", detailedError);
-                        clipboard.setPrimaryClip(clip);
-                        Toast.makeText(context, "Error details copied to clipboard.", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Close", null)
-                .show();
+            showDetailedErrorDialog("External Playback Error", e);
         }
     }
 
     /**
-     * The Kill-Switch: Monitors the app's lifecycle.
-     * The moment HFM comes back into the foreground (meaning the external player closed),
-     * it zeroes out the memory of the cache file and deletes it permanently.
+     * THE KILL-SWITCH: Monitors the app's lifecycle via ProcessLifecycleOwner.
      */
     private void activatePlaybackKillSwitch(final File tempFile) {
         ProcessLifecycleOwner.get().getLifecycle().addObserver(new DefaultLifecycleObserver() {
             @Override
             public void onStart(LifecycleOwner owner) {
-                // The app has returned to the foreground. External playback is over.
                 Log.d(TAG, "Kill-Switch Activated: Shredding secure cache file.");
                 shredFile(tempFile);
-                
-                // Remove the observer so it doesn't fire repeatedly
                 ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
             }
         });
     }
 
     /**
-     * Zeroes out the file bytes before deleting it to prevent forensic recovery.
+     * FORENSIC SHREDDER: Your original logic to zero out file bytes.
      */
     private void shredFile(File file) {
         if (file == null || !file.exists()) return;
         try {
             long length = file.length();
             FileOutputStream fos = new FileOutputStream(file);
-            // Write zeroes to overwrite the data on disk
+            // Original 8192-byte zeroes loop
             byte[] zeroes = new byte[8192];
             long written = 0;
             while (written < length) {
@@ -182,7 +223,6 @@ public class SecureVaultManager {
             }
             fos.flush();
             fos.close();
-            // Finally, delete the physical file
             file.delete();
             Log.d(TAG, "File successfully shredded.");
         } catch (IOException e) {
@@ -191,6 +231,9 @@ public class SecureVaultManager {
         }
     }
 
+    /**
+     * Your original 8192-byte buffer copy logic.
+     */
     private void copyToCache(File source, File dest) throws IOException {
         InputStream in = new FileInputStream(source);
         OutputStream out = new FileOutputStream(dest);
@@ -203,15 +246,66 @@ public class SecureVaultManager {
         out.close();
     }
 
+    /**
+     * ADVANCED ERROR REPORTING: Displays full Java StackTrace in scrollable dialog.
+     */
+    private void showDetailedErrorDialog(String title, Exception e) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        final String detailedError = sw.toString();
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(title);
+        
+        // Use a scrollable TextView for the massive stacktrace
+        final TextView errorTextView = new TextView(context);
+        errorTextView.setText(detailedError);
+        errorTextView.setPadding(40, 40, 40, 40);
+        errorTextView.setTextIsSelectable(true);
+        
+        builder.setView(errorTextView);
+        
+        builder.setPositiveButton("Copy Error", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("HFM_Error_Log", detailedError);
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(context, "Error copied to clipboard.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        
+        builder.setNegativeButton("Close", null);
+        builder.show();
+    }
+
+    private String getExtension(String fileName) {
+        int lastDot = fileName.lastIndexOf('.');
+        if (lastDot > 0) return fileName.substring(lastDot + 1).toLowerCase();
+        return "";
+    }
+
+    private boolean isImage(String ext) {
+        return Arrays.asList("jpg", "jpeg", "png", "gif", "bmp", "webp").contains(ext);
+    }
+
+    private boolean isVideo(String ext) {
+        return Arrays.asList("mp4", "3gp", "mkv", "webm", "avi").contains(ext);
+    }
+
+    private boolean isAudio(String ext) {
+        return Arrays.asList("mp3", "wav", "ogg", "m4a", "aac", "flac").contains(ext);
+    }
+
     private String getMimeType(String fileName) {
         String type = null;
         String extension = MimeTypeMap.getFileExtensionFromUrl(fileName.replace(" ", "%20"));
         if (extension != null) {
             type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.toLowerCase());
         }
-        if (type == null) {
-            type = "*/*";
-        }
-        return type;
+        return (type == null) ? "*/*" : type;
     }
 }
