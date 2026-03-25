@@ -81,7 +81,8 @@ public class VaultBrowserActivity extends Activity {
                     
                     Toast.makeText(VaultBrowserActivity.this, "Opening Secure Playback...", Toast.LENGTH_SHORT).show();
                     
-                    // Call the perfectly written backend engine
+                    // Call the backend engine
+                    // Logic updated in SecureVaultManager.java to show Choice Dialog
                     secureVaultManager.playSecurely(file, originalName);
                 }
             });
