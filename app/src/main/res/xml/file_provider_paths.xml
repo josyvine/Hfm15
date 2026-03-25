@@ -8,6 +8,11 @@
         name="secure_playback_cache"
         path="secure_cache/" />
 
+    <!-- Path for general app files access -->
+    <files-path
+        name="internal_files"
+        path="." />
+
     <!-- Path for general external storage access.
          This preserves your existing ability to share files from 
          public directories and the root of external storage. -->
