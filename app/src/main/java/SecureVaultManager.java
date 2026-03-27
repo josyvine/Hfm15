@@ -89,21 +89,21 @@ public class SecureVaultManager {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("Secure Playback");
         builder.setMessage("How would you like to play this file?");
-        
+
         builder.setPositiveButton("RAM Mode (Internal)", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 handleInternalPlayback(vaultFile, originalFileName);
             }
         });
-        
+
         builder.setNeutralButton("External Player", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 handleExternalPlayback(vaultFile, originalFileName);
             }
         });
-        
+
         builder.setNegativeButton("Cancel", null);
         builder.show();
     }
@@ -167,7 +167,7 @@ public class SecureVaultManager {
             // Your original 8192-byte buffer loop logic
             copyToCache(vaultFile, tempPlayFile);
 
-            // Generate URI via FileProvider using authority com.hfm.app.provider
+            // Generate URI via FileProvider
             Uri fileUri = FileProvider.getUriForFile(
                     context, 
                     "com.hfm.app.provider", 
@@ -183,7 +183,7 @@ public class SecureVaultManager {
 
             context.startActivity(playIntent);
 
-            // Activate your ProcessLifecycleOwner Kill-Switch
+            // Activate modified Kill-Switch to prevent race condition
             activatePlaybackKillSwitch(tempPlayFile);
 
         } catch (Exception e) {
@@ -193,14 +193,26 @@ public class SecureVaultManager {
 
     /**
      * THE KILL-SWITCH: Monitors the app's lifecycle via ProcessLifecycleOwner.
+     * FIX: Added 'hasLeftApp' check to prevent immediate shredding when the player/menu opens.
      */
     private void activatePlaybackKillSwitch(final File tempFile) {
         ProcessLifecycleOwner.get().getLifecycle().addObserver(new DefaultLifecycleObserver() {
+            private boolean hasLeftApp = false;
+
+            @Override
+            public void onStop(LifecycleOwner owner) {
+                // Triggered when the user leaves HFM (to the Player or Resolver Menu)
+                hasLeftApp = true;
+            }
+
             @Override
             public void onStart(LifecycleOwner owner) {
-                Log.d(TAG, "Kill-Switch Activated: Shredding secure cache file.");
-                shredFile(tempFile);
-                ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
+                // Triggered when the user returns to HFM
+                if (hasLeftApp) {
+                    Log.d(TAG, "Kill-Switch Activated: Shredding secure cache file.");
+                    shredFile(tempFile);
+                    ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
+                }
             }
         });
     }
@@ -257,15 +269,15 @@ public class SecureVaultManager {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle(title);
-        
-        // Use a scrollable TextView for the massive stacktrace
+
+        // Scrollable TextView for the stacktrace
         final TextView errorTextView = new TextView(context);
         errorTextView.setText(detailedError);
         errorTextView.setPadding(40, 40, 40, 40);
         errorTextView.setTextIsSelectable(true);
-        
+
         builder.setView(errorTextView);
-        
+
         builder.setPositiveButton("Copy Error", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -277,7 +289,7 @@ public class SecureVaultManager {
                 }
             }
         });
-        
+
         builder.setNegativeButton("Close", null);
         builder.show();
     }
