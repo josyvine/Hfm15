@@ -46,8 +46,6 @@ public class DownloadService extends Service {
     public static final String EXTRA_ERROR_MESSAGE = "com.hfm.app.extra.ERROR_MESSAGE";
 
     private FirebaseFirestore db;
-    private ListenerRegistration requestListener;
-    private String dropRequestId;
 
     @Override
     public void onCreate() {
@@ -57,13 +55,14 @@ public class DownloadService extends Service {
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
+    public int onStartCommand(Intent intent, int flags, final int startId) {
         if (intent != null) {
-            dropRequestId = intent.getStringExtra("drop_request_id");
+            // FIX: Using local variables instead of class globals to support multiple concurrent file transfers
+            final String currentDropRequestId = intent.getStringExtra("drop_request_id");
             String rawSecretNumber = intent.getStringExtra("secret_number"); 
-            
-            // --- CRITICAL FIX: Sanitize the PIN to remove invisible clipboard line-breaks ---
-            final String passedSecretNumber = (rawSecretNumber != null) ? rawSecretNumber.replaceAll("\\s+", "") : null;
+
+            // --- CRITICAL FIX: Sanitize the PIN to remove invisible clipboard line-breaks and spaces ---
+            final String passedSecretNumber = (rawSecretNumber != null) ? rawSecretNumber.trim().replaceAll("\\s+", "") : null;
 
             Notification notification = buildNotification("Initializing Secure Drop...", true, 0, 0);
             startForeground(NOTIFICATION_ID, notification);
@@ -71,41 +70,43 @@ public class DownloadService extends Service {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    // Pass the sanitized PIN down into the processing thread
-                    startDownloadProcess(dropRequestId, passedSecretNumber);
+                    // Pass the sanitized PIN and the unique startId down into the processing thread
+                    startDownloadProcess(currentDropRequestId, passedSecretNumber, startId);
                 }
             }).start();
         }
         return START_NOT_STICKY;
     }
 
-    private void startDownloadProcess(final String docId, final String secretNumber) {
+    private void startDownloadProcess(final String docId, final String secretNumber, final int startId) {
         // Phase 4 & 5: Reconstruction
         final DocumentReference docRef = db.collection("drop_requests").document(docId);
-        listenForStatusChange(docRef);
+        
+        // Register local listener for this specific request
+        final ListenerRegistration currentListener = listenForStatusChange(docRef, startId);
 
         docRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
             @Override
             public void onSuccess(final DocumentSnapshot documentSnapshot) {
                 if (!documentSnapshot.exists()) {
                     broadcastError("Error: Drop request not found.");
-                    stopServiceAndCleanup(null);
+                    stopServiceAndCleanup(null, startId, currentListener, docId);
                     return;
                 }
-                
+
                 final String encryptedManifestId = documentSnapshot.getString("encryptedManifestId");
                 final long originalFilesize = documentSnapshot.getLong("filesize");
 
                 // Check ONLY what the server provides, and ensure the UI passed the PIN successfully
                 if (encryptedManifestId == null) {
                     broadcastError("Error: Incomplete transfer details from server.");
-                    stopServiceAndCleanup(null);
+                    stopServiceAndCleanup(null, startId, currentListener, docId);
                     return;
                 }
 
                 if (secretNumber == null || secretNumber.isEmpty()) {
                     broadcastError("Error: Secret Number missing from receiver UI.");
-                    stopServiceAndCleanup(null);
+                    stopServiceAndCleanup(null, startId, currentListener, docId);
                     return;
                 }
 
@@ -113,7 +114,7 @@ public class DownloadService extends Service {
                 GoogleSignInAccount driveAccount = GoogleSignIn.getLastSignedInAccount(DownloadService.this);
                 if (driveAccount == null) {
                     broadcastError("Google Drive authentication failed. Please sign in again.");
-                    stopServiceAndCleanup(null);
+                    stopServiceAndCleanup(null, startId, currentListener, docId);
                     return;
                 }
 
@@ -125,59 +126,54 @@ public class DownloadService extends Service {
                 final File vaultFile = vaultManager.createVaultFile(documentSnapshot.getString("originalFilename"));
 
                 // --- CRITICAL FIX: Move heavy network/crypto logic completely off the Main Thread ---
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
-                                @Override
-                                public void onProgress(int progress, int max, long bytesProcessed) {
-                                    updateNotification("Reconstructing file... " + progress + "%", true, progress, max);
-                                    broadcastStatus("Reconstructing...",
-                                            String.format(Locale.US, "%s / %s",
-                                                    Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
-                                                    Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
-                                            progress, max, bytesProcessed);
-                                }
-
-                                @Override
-                                public void onStatusUpdate(String minorStatus) {
-                                    updateNotification(minorStatus, true, 0, 0);
-                                    broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
-                                }
-                            });
-
-                            // If we reach this line, reconstruction was successful
-                            docRef.update("status", "complete");
-                            updateNotification("Download Complete: " + originalFileName, false, 100, 100);
-                            
-                            // NEW: Pass the variables to the broadcast for secure playback
-                            broadcastComplete(originalFileName, vaultFile.getAbsolutePath());
-                            
-                            if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                                FirebaseAuth.getInstance().getCurrentUser().delete();
-                            }
-                            stopServiceAndCleanup(null);
-
-                        } catch (Exception e) {
-                            // The engine threw a fatal error (Google Drive API or AES Decryption)
-                            docRef.update("status", "error");
-                            
-                            // Extract the massive, detailed Java stack trace
-                            String exactErrorLog = getStackTraceAsString(e);
-                            
-                            // Broadcast the raw error log to the screen instead of the generic string
-                            broadcastError("FATAL RECONSTRUCTION ERROR:\n\n" + exactErrorLog);
-                            stopServiceAndCleanup(null);
+                try {
+                    String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
+                        @Override
+                        public void onProgress(int progress, int max, long bytesProcessed) {
+                            updateNotification("Reconstructing " + originalFileName + "... " + progress + "%", true, progress, max);
+                            broadcastStatus("Reconstructing...",
+                                    String.format(Locale.US, "%s / %s",
+                                            Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
+                                            Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
+                                    progress, max, bytesProcessed);
                         }
+
+                        @Override
+                        public void onStatusUpdate(String minorStatus) {
+                            updateNotification(minorStatus, true, 0, 0);
+                            broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
+                        }
+                    });
+
+                    // If we reach this line, reconstruction was successful
+                    docRef.update("status", "complete");
+                    updateNotification("Download Complete: " + originalFileName, false, 100, 100);
+
+                    // Pass the variables to the broadcast for secure playback
+                    broadcastComplete(originalFileName, vaultFile.getAbsolutePath());
+
+                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                        FirebaseAuth.getInstance().getCurrentUser().delete();
                     }
-                }).start();
+                    stopServiceAndCleanup(null, startId, currentListener, docId);
+
+                } catch (Exception e) {
+                    // The engine threw a fatal error (Google Drive API or AES Decryption)
+                    docRef.update("status", "error");
+
+                    // Extract the massive, detailed Java stack trace
+                    String exactErrorLog = getStackTraceAsString(e);
+
+                    // Broadcast the raw error log to the screen instead of the generic string
+                    broadcastError("FATAL RECONSTRUCTION ERROR:\n\n" + exactErrorLog);
+                    stopServiceAndCleanup(null, startId, currentListener, docId);
+                }
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
                 broadcastError("Could not retrieve transfer details from the server.\n\n" + getStackTraceAsString(e));
-                stopServiceAndCleanup(null);
+                stopServiceAndCleanup(null, startId, currentListener, docId);
             }
         });
     }
@@ -198,8 +194,7 @@ public class DownloadService extends Service {
         intent.putExtra(DropProgressActivity.EXTRA_BYTES_TRANSFERRED, bytes);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
-    
-    // NEW: Updated to pass filename and path to intent extras
+
     private void broadcastComplete(String originalFileName, String vaultFilePath) {
         Intent intent = new Intent(DropProgressActivity.ACTION_TRANSFER_COMPLETE);
         intent.putExtra("original_file_name", originalFileName);
@@ -214,26 +209,24 @@ public class DownloadService extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(DropProgressActivity.ACTION_TRANSFER_ERROR));
     }
 
-    private void listenForStatusChange(DocumentReference docRef) {
-        requestListener = docRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+    private ListenerRegistration listenForStatusChange(DocumentReference docRef, final int startId) {
+        return docRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
             @Override
             public void onEvent(DocumentSnapshot snapshot, FirebaseFirestoreException e) {
                 if (e != null) { return; }
                 if (snapshot != null && snapshot.exists()) {
                     String status = snapshot.getString("status");
                     if ("error".equals(status) || "declined".equals(status) || "cancelled".equals(status)) {
-                         stopServiceAndCleanup("Transfer was cancelled or encountered an error.");
-                    } else if ("complete".equals(status)) {
-                        stopServiceAndCleanup(null);
+                         stopServiceAndCleanup("Transfer was cancelled or encountered an error.", startId, null, null);
                     }
                 } else {
-                     stopServiceAndCleanup("Transfer was cancelled by the sender.");
+                     stopServiceAndCleanup("Transfer was cancelled by the sender.", startId, null, null);
                 }
             }
         });
     }
 
-    private void stopServiceAndCleanup(final String toastMessage) {
+    private void stopServiceAndCleanup(final String toastMessage, final int startId, ListenerRegistration listener, String docId) {
         if (toastMessage != null) {
             new Handler(Looper.getMainLooper()).post(new Runnable() {
                 @Override
@@ -242,33 +235,23 @@ public class DownloadService extends Service {
                 }
             });
         }
-        stopSelf();
+        
+        if (listener != null) {
+            listener.remove();
+        }
+
+        if (docId != null) {
+            db.collection("drop_requests").document(docId).delete();
+        }
+
+        // FIX: Ensuring startId is used so the service only stops if this was the last active task
+        stopSelf(startId);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "DownloadService onDestroy.");
-        if (requestListener != null) {
-            requestListener.remove();
-        }
-
-        if (dropRequestId != null) {
-            db.collection("drop_requests").document(dropRequestId).delete()
-                    .addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void aVoid) {
-                            Log.d(TAG, "Drop request document successfully deleted by receiver.");
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                            Log.w(TAG, "Failed to delete drop request document on receiver side.", e);
-                        }
-                    });
-        }
-
         stopForeground(true);
     }
 
