@@ -289,20 +289,24 @@ public class MainActivity extends Activity {
             .show();
     }
 
+    /**
+     * FIX: Updated to support multiple files sending using one single PIN.
+     * Iterates through all selected files and starts a SenderService for each.
+     */
     private void startSenderService(String receiverUsername, String secretNumber) {
         if (filesToSendViaDrop == null || filesToSendViaDrop.isEmpty()) {
             Toast.makeText(this, "Error: No file selected to send.", Toast.LENGTH_SHORT).show();
             return;
         }
-        // SenderService will only handle one file at a time per the plan.
-        String filePath = filesToSendViaDrop.get(0);
 
-        Intent intent = new Intent(this, SenderService.class);
-        intent.setAction(SenderService.ACTION_START_SEND);
-        intent.putExtra(SenderService.EXTRA_FILE_PATH, filePath);
-        intent.putExtra(SenderService.EXTRA_RECEIVER_USERNAME, receiverUsername);
-        intent.putExtra(SenderService.EXTRA_SECRET_NUMBER, secretNumber);
-        ContextCompat.startForegroundService(this, intent);
+        for (String filePath : filesToSendViaDrop) {
+            Intent intent = new Intent(this, SenderService.class);
+            intent.setAction(SenderService.ACTION_START_SEND);
+            intent.putExtra(SenderService.EXTRA_FILE_PATH, filePath);
+            intent.putExtra(SenderService.EXTRA_RECEIVER_USERNAME, receiverUsername);
+            intent.putExtra(SenderService.EXTRA_SECRET_NUMBER, secretNumber);
+            ContextCompat.startForegroundService(this, intent);
+        }
 
         filesToSendViaDrop = null;
     }
