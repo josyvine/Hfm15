@@ -171,15 +171,21 @@ public class ReconstructionEngine {
             throw new Exception("Encrypted data is too short to contain IV.");
         }
 
+        // FIX: Critical sanitization of the PIN to ensure key derivation matches the sender's exactly
+        String sanitizedPIN = (secretNumber != null) ? secretNumber.trim().replaceAll("\\s+", "") : "";
+        if (sanitizedPIN.isEmpty()) {
+            throw new Exception("Sanitized Secret Number is empty.");
+        }
+
         byte[] iv = new byte[12];
         System.arraycopy(encryptedDataWithIv, 0, iv, 0, 12);
 
         byte[] cipherText = new byte[encryptedDataWithIv.length - 12];
         System.arraycopy(encryptedDataWithIv, 12, cipherText, 0, cipherText.length);
 
-        // Derive the key using the exact same PBKDF2 logic as the sender
+        // Derive the key using the sanitized PIN and exact PBKDF2 logic
         SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM);
-        KeySpec spec = new PBEKeySpec(secretNumber.toCharArray(), SALT.getBytes(StandardCharsets.UTF_8), 65536, 256);
+        KeySpec spec = new PBEKeySpec(sanitizedPIN.toCharArray(), SALT.getBytes(StandardCharsets.UTF_8), 65536, 256);
         SecretKey tmp = factory.generateSecret(spec);
         SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
 
