@@ -46,6 +46,7 @@ public class DownloadService extends Service {
     public static final String EXTRA_ERROR_MESSAGE = "com.hfm.app.extra.ERROR_MESSAGE";
 
     private FirebaseFirestore db;
+    // requestListener and dropRequestId removed from here to support multiple files simultaneously
 
     @Override
     public void onCreate() {
@@ -57,11 +58,10 @@ public class DownloadService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, final int startId) {
         if (intent != null) {
-            // FIX: Using local variables instead of class globals to support multiple concurrent file transfers
             final String currentDropRequestId = intent.getStringExtra("drop_request_id");
             String rawSecretNumber = intent.getStringExtra("secret_number"); 
-
-            // --- CRITICAL FIX: Sanitize the PIN to remove invisible clipboard line-breaks and spaces ---
+            
+            // --- CRITICAL FIX: Sanitize the PIN to remove invisible clipboard line-breaks ---
             final String passedSecretNumber = (rawSecretNumber != null) ? rawSecretNumber.trim().replaceAll("\\s+", "") : null;
 
             Notification notification = buildNotification("Initializing Secure Drop...", true, 0, 0);
@@ -70,7 +70,7 @@ public class DownloadService extends Service {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    // Pass the sanitized PIN and the unique startId down into the processing thread
+                    // Pass the sanitized PIN and startId into the processing thread
                     startDownloadProcess(currentDropRequestId, passedSecretNumber, startId);
                 }
             }).start();
@@ -82,7 +82,7 @@ public class DownloadService extends Service {
         // Phase 4 & 5: Reconstruction
         final DocumentReference docRef = db.collection("drop_requests").document(docId);
         
-        // Register local listener for this specific request
+        // Local listener for this specific file task
         final ListenerRegistration currentListener = listenForStatusChange(docRef, startId);
 
         docRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
@@ -93,9 +93,10 @@ public class DownloadService extends Service {
                     stopServiceAndCleanup(null, startId, currentListener, docId);
                     return;
                 }
-
+                
                 final String encryptedManifestId = documentSnapshot.getString("encryptedManifestId");
                 final long originalFilesize = documentSnapshot.getLong("filesize");
+                final String fileNameFromServer = documentSnapshot.getString("originalFilename");
 
                 // Check ONLY what the server provides, and ensure the UI passed the PIN successfully
                 if (encryptedManifestId == null) {
@@ -123,51 +124,57 @@ public class DownloadService extends Service {
                 final SecureVaultManager vaultManager = new SecureVaultManager(DownloadService.this);
 
                 // Create a destination file in the secure vault
-                final File vaultFile = vaultManager.createVaultFile(documentSnapshot.getString("originalFilename"));
+                final File vaultFile = vaultManager.createVaultFile(fileNameFromServer);
 
                 // --- CRITICAL FIX: Move heavy network/crypto logic completely off the Main Thread ---
-                try {
-                    String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
-                        @Override
-                        public void onProgress(int progress, int max, long bytesProcessed) {
-                            updateNotification("Reconstructing " + originalFileName + "... " + progress + "%", true, progress, max);
-                            broadcastStatus("Reconstructing...",
-                                    String.format(Locale.US, "%s / %s",
-                                            Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
-                                            Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
-                                    progress, max, bytesProcessed);
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            // FIX: To avoid Build Error, we use the final fileNameFromServer inside the ProgressListener
+                            String originalFileName = reconstructionEngine.executeReconstruction(encryptedManifestId, secretNumber, vaultFile, new ReconstructionEngine.ProgressListener() {
+                                @Override
+                                public void onProgress(int progress, int max, long bytesProcessed) {
+                                    updateNotification("Reconstructing " + fileNameFromServer + "... " + progress + "%", true, progress, max);
+                                    broadcastStatus("Reconstructing...",
+                                            String.format(Locale.US, "%s / %s",
+                                                    Formatter.formatFileSize(getApplicationContext(), bytesProcessed),
+                                                    Formatter.formatFileSize(getApplicationContext(), originalFilesize)),
+                                            progress, max, bytesProcessed);
+                                }
+
+                                @Override
+                                public void onStatusUpdate(String minorStatus) {
+                                    updateNotification(minorStatus, true, 0, 0);
+                                    broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
+                                }
+                            });
+
+                            // If we reach this line, reconstruction was successful
+                            docRef.update("status", "complete");
+                            updateNotification("Download Complete: " + originalFileName, false, 100, 100);
+                            
+                            // Pass the variables to the broadcast for secure playback
+                            broadcastComplete(originalFileName, vaultFile.getAbsolutePath());
+                            
+                            if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                                FirebaseAuth.getInstance().getCurrentUser().delete();
+                            }
+                            stopServiceAndCleanup(null, startId, currentListener, docId);
+
+                        } catch (Exception e) {
+                            // The engine threw a fatal error (Google Drive API or AES Decryption)
+                            docRef.update("status", "error");
+                            
+                            // Extract the massive, detailed Java stack trace
+                            String exactErrorLog = getStackTraceAsString(e);
+                            
+                            // Broadcast the raw error log to the screen instead of the generic string
+                            broadcastError("FATAL RECONSTRUCTION ERROR:\n\n" + exactErrorLog);
+                            stopServiceAndCleanup(null, startId, currentListener, docId);
                         }
-
-                        @Override
-                        public void onStatusUpdate(String minorStatus) {
-                            updateNotification(minorStatus, true, 0, 0);
-                            broadcastStatus("Reconstructing...", minorStatus, -1, -1, -1);
-                        }
-                    });
-
-                    // If we reach this line, reconstruction was successful
-                    docRef.update("status", "complete");
-                    updateNotification("Download Complete: " + originalFileName, false, 100, 100);
-
-                    // Pass the variables to the broadcast for secure playback
-                    broadcastComplete(originalFileName, vaultFile.getAbsolutePath());
-
-                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                        FirebaseAuth.getInstance().getCurrentUser().delete();
                     }
-                    stopServiceAndCleanup(null, startId, currentListener, docId);
-
-                } catch (Exception e) {
-                    // The engine threw a fatal error (Google Drive API or AES Decryption)
-                    docRef.update("status", "error");
-
-                    // Extract the massive, detailed Java stack trace
-                    String exactErrorLog = getStackTraceAsString(e);
-
-                    // Broadcast the raw error log to the screen instead of the generic string
-                    broadcastError("FATAL RECONSTRUCTION ERROR:\n\n" + exactErrorLog);
-                    stopServiceAndCleanup(null, startId, currentListener, docId);
-                }
+                }).start();
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -194,7 +201,7 @@ public class DownloadService extends Service {
         intent.putExtra(DropProgressActivity.EXTRA_BYTES_TRANSFERRED, bytes);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
-
+    
     private void broadcastComplete(String originalFileName, String vaultFilePath) {
         Intent intent = new Intent(DropProgressActivity.ACTION_TRANSFER_COMPLETE);
         intent.putExtra("original_file_name", originalFileName);
