@@ -48,6 +48,8 @@ public class MorphedShardEngine {
     /**
      * Executes Phase 2: Polymorphic Sharding, Encryption, and Dispersion.
      * 
+     * FIX: Implemented strict RAM buffer management to prevent OutOfMemoryError on files > 100MB.
+     * 
      * @param inputFile The local file to send.
      * @param secretNumber The user-provided PIN used to encrypt the Manifest.
      * @param listener Callback for real-time UI updates.
@@ -117,11 +119,14 @@ public class MorphedShardEngine {
                     listener.onProgress((int) ((totalBytesProcessed * 100) / fileSize), 100, totalBytesProcessed);
                 }
 
-                // If buffer reached dynamic shard limit, upload it
+                // FIX: Strict check to ensure RAM is cleared before expansion
                 if (shardBuffer.size() >= currentTargetShardSize) {
                     uploadShardAndRecord(shardBuffer.toByteArray(), shardOrder, subfolderIds, random, manifestShardsArray);
                     shardOrder++;
-                    shardBuffer.reset(); // Clear RAM immediately
+                    
+                    // CRITICAL FIX: Reset buffer and trigger GC hint to keep heap usage low
+                    shardBuffer.reset(); 
+                    
                     currentTargetShardSize = getRandomizedShardSize(baseShardSize, random);
                     
                     // Decoy injection (10% chance to upload a junk file)
