@@ -36,7 +36,8 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete Audio"
             app:srcCompat="@drawable/delete_forever_24px"
-            app:tint="@android:color/white" />
+            android:tint="#FFFFFF"
+            app:tint="#FFFFFF" />
 
         <ImageButton
             android:id="@+id/close_button_audio_player"
@@ -47,7 +48,8 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Audio Player"
             app:srcCompat="@drawable/close_24px"
-            app:tint="@android:color/white" />
+            android:tint="#FFFFFF"
+            app:tint="#FFFFFF" />
     </RelativeLayout>
 
     <!-- Player UI -->
@@ -115,6 +117,7 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/skip_previous_24px"
                 app:tint="?android:attr/colorPrimary"
+                android:tint="?android:attr/colorPrimary"
                 android:scaleType="fitCenter"/>
 
             <ImageButton
@@ -124,6 +127,7 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/play_arrow_24px"
                 app:tint="?android:attr/colorPrimary"
+                android:tint="?android:attr/colorPrimary"
                 android:layout_marginStart="24dp"
                 android:layout_marginEnd="24dp"
                 android:scaleType="fitCenter"/>
@@ -135,6 +139,7 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/skip_next_24px"
                 app:tint="?android:attr/colorPrimary"
+                android:tint="?android:attr/colorPrimary"
                 android:scaleType="fitCenter"/>
         </LinearLayout>
     </LinearLayout>
@@ -164,7 +169,8 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
                 app:srcCompat="@drawable/open_in_new_24px"
-                app:tint="@android:color/white" />
+                android:tint="#FFFFFF"
+                app:tint="#FFFFFF" />
 
             <ImageButton
                 android:id="@+id/share_button_audio"
@@ -174,11 +180,12 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Share"
                 app:srcCompat="@drawable/share_24px"
-                app:tint="@android:color/white" />
+                android:tint="#FFFFFF"
+                app:tint="#FFFFFF" />
 
         </LinearLayout>
 
-        <!-- DELETION PROGRESS UI (Initially Hidden) -->
+        <!-- DELETION PROGRESS UI -->
         <RelativeLayout
             android:id="@+id/deletion_progress_layout"
             android:layout_width="match_parent"
