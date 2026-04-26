@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.pdf.PdfRenderer;
@@ -18,6 +19,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -65,6 +67,15 @@ public class MassDeleteAdapter extends RecyclerView.Adapter<MassDeleteAdapter.It
         holder.exclusionOverlay.setVisibility(item.isExcluded() ? View.GONE : View.VISIBLE);
         holder.thumbnailImage.setTag(item.getUri().toString());
 
+        // Determine contrast color based on theme for generic icons
+        int contrastColor;
+        String currentTheme = ThemeManager.getTheme(context);
+        if (currentTheme.equals(ThemeManager.THEME_DARK) || currentTheme.equals(ThemeManager.THEME_AMOLED) || currentTheme.equals(ThemeManager.THEME_NORDIC)) {
+            contrastColor = ContextCompat.getColor(context, android.R.color.white);
+        } else {
+            contrastColor = ContextCompat.getColor(context, R.color.lt_colorPrimary);
+        }
+
         // Display Filename logic
         if (isMediaFile(item.getDisplayName())) {
             holder.fileNameText.setVisibility(View.GONE);
@@ -85,14 +96,22 @@ public class MassDeleteAdapter extends RecyclerView.Adapter<MassDeleteAdapter.It
         if (isPdfOrApk) {
             // Restore placeholder
             holder.thumbnailImage.setImageResource(fallbackIcon);
+            // Apply tint to generic placeholder
+            holder.thumbnailImage.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
             
             thumbnailExecutor.execute(() -> {
                 final Bitmap thumbnail = createSpecialThumbnail(item); // Uses restored methods
                 if (thumbnail != null && holder.thumbnailImage.getTag().equals(item.getUri().toString())) {
-                    holder.thumbnailImage.post(() -> holder.thumbnailImage.setImageBitmap(thumbnail));
+                    holder.thumbnailImage.post(() -> {
+                        holder.thumbnailImage.clearColorFilter(); // Remove tint for actual rendered PDF/APK content
+                        holder.thumbnailImage.setImageBitmap(thumbnail);
+                    });
                 }
             });
         } else {
+            // Clear tint before Glide loads media
+            holder.thumbnailImage.clearColorFilter();
+
             // Use Glide for everything else (Images, Videos)
             Glide.with(context)
                 .load(item.getUri())
@@ -102,6 +121,11 @@ public class MassDeleteAdapter extends RecyclerView.Adapter<MassDeleteAdapter.It
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .centerCrop())
                 .into(holder.thumbnailImage);
+            
+            // Re-apply tint if Glide used the fallback icon (non-media files)
+            if (!isMediaFile(displayName)) {
+                holder.thumbnailImage.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
+            }
         }
 
         holder.itemView.setOnClickListener(v -> {
