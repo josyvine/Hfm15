@@ -105,14 +105,16 @@ public class FileDeleteAdapter extends RecyclerView.Adapter<FileDeleteAdapter.Fi
 
     private int getIconForFileType(String fileName) {
         String lowerFileName = fileName.toLowerCase();
-        if (lowerFileName.endsWith(".doc") || lowerFileName.endsWith(".docx") || lowerFileName.endsWith(".pdf")) return android.R.drawable.ic_menu_save;
-        if (lowerFileName.endsWith(".xls") || lowerFileName.endsWith(".xlsx")) return android.R.drawable.ic_menu_agenda;
-        if (lowerFileName.endsWith(".ppt") || lowerFileName.endsWith(".pptx")) return android.R.drawable.ic_menu_slideshow;
-        if (lowerFileName.endsWith(".txt") || lowerFileName.endsWith(".rtf") || lowerFileName.endsWith(".log")) return android.R.drawable.ic_menu_view;
-        if (lowerFileName.endsWith(".html") || lowerFileName.endsWith(".xml") || lowerFileName.endsWith(".js") || lowerFileName.endsWith(".css") || lowerFileName.endsWith(".java") || lowerFileName.endsWith(".py") || lowerFileName.endsWith(".c") || lowerFileName.endsWith(".cpp")) return android.R.drawable.ic_menu_edit;
-        if (lowerFileName.endsWith(".zip") || lowerFileName.endsWith(".rar") || lowerFileName.endsWith(".7z")) return android.R.drawable.ic_menu_set_as;
-        if (lowerFileName.endsWith(".mp3") || lowerFileName.endsWith(".wav") || lowerFileName.endsWith(".ogg")) return android.R.drawable.ic_media_play;
-        return android.R.drawable.ic_menu_info_details;
+        // UPDATED: Replaced system icons with new Google Fonts professional icons
+        if (lowerFileName.endsWith(".doc") || lowerFileName.endsWith(".docx") || lowerFileName.endsWith(".pdf")) return R.drawable.docs_24px;
+        if (lowerFileName.endsWith(".xls") || lowerFileName.endsWith(".xlsx")) return R.drawable.docs_24px;
+        if (lowerFileName.endsWith(".ppt") || lowerFileName.endsWith(".pptx")) return R.drawable.docs_24px;
+        if (lowerFileName.endsWith(".txt") || lowerFileName.endsWith(".rtf") || lowerFileName.endsWith(".log")) return R.drawable.docs_24px;
+        if (lowerFileName.endsWith(".html") || lowerFileName.endsWith(".xml") || lowerFileName.endsWith(".js") || lowerFileName.endsWith(".css") || lowerFileName.endsWith(".java") || lowerFileName.endsWith(".py") || lowerFileName.endsWith(".c") || lowerFileName.endsWith(".cpp")) return R.drawable.code_24px;
+        if (lowerFileName.endsWith(".zip") || lowerFileName.endsWith(".rar") || lowerFileName.endsWith(".7z")) return R.drawable.category_24px;
+        if (lowerFileName.endsWith(".mp3") || lowerFileName.endsWith(".wav") || lowerFileName.endsWith(".ogg")) return R.drawable.audio_file_24px;
+        
+        return R.drawable.category_24px;
     }
 
     @Override
