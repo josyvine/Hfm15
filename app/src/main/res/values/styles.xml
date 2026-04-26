@@ -59,4 +59,4 @@
         <!-- Matches the background color defined in webview-app.html -->
         <item name="android:windowBackground">#0f1724</item>
     </style>
-</resources>
+</resources> 
