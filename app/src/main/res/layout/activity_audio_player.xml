@@ -67,7 +67,8 @@
             android:layout_width="120dp"
             android:layout_height="120dp"
             app:srcCompat="@drawable/audio_file_24px"
-            app:tint="?android:attr/colorPrimary" />
+            android:tint="#4f46e5"
+            app:tint="#4f46e5" />
 
         <!-- SeekBar and Timers -->
         <RelativeLayout
@@ -116,8 +117,8 @@
                 android:layout_height="64dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/skip_previous_24px"
-                app:tint="?android:attr/colorPrimary"
-                android:tint="?android:attr/colorPrimary"
+                android:tint="#4f46e5"
+                app:tint="#4f46e5"
                 android:scaleType="fitCenter"/>
 
             <ImageButton
@@ -126,8 +127,8 @@
                 android:layout_height="80dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/play_arrow_24px"
-                app:tint="?android:attr/colorPrimary"
-                android:tint="?android:attr/colorPrimary"
+                android:tint="#4f46e5"
+                app:tint="#4f46e5"
                 android:layout_marginStart="24dp"
                 android:layout_marginEnd="24dp"
                 android:scaleType="fitCenter"/>
@@ -138,8 +139,8 @@
                 android:layout_height="64dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/skip_next_24px"
-                app:tint="?android:attr/colorPrimary"
-                android:tint="?android:attr/colorPrimary"
+                android:tint="#4f46e5"
+                app:tint="#4f46e5"
                 android:scaleType="fitCenter"/>
         </LinearLayout>
     </LinearLayout>
