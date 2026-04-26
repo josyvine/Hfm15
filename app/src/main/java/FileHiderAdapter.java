@@ -112,14 +112,14 @@ public class FileHiderAdapter extends RecyclerView.Adapter<FileHiderAdapter.File
 
     private int getIconForFileType(String fileName) {
         String lower = fileName.toLowerCase();
-        if (lower.endsWith(".doc") || lower.endsWith(".docx") || lower.endsWith(".pdf")) return android.R.drawable.ic_menu_save;
-        if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return android.R.drawable.ic_menu_agenda;
-        if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return android.R.drawable.ic_menu_slideshow;
-        if (lower.endsWith(".txt") || lower.endsWith(".rtf") || lower.endsWith(".log")) return android.R.drawable.ic_menu_view;
-        if (lower.endsWith(".html") || lower.endsWith(".xml") || lower.endsWith(".js") || lower.endsWith(".css") || lower.endsWith(".java") || lower.endsWith(".py") || lower.endsWith(".c") || lower.endsWith(".cpp")) return android.R.drawable.ic_menu_edit;
-        if (lower.endsWith(".zip") || lower.endsWith(".rar") || lower.endsWith(".7z")) return android.R.drawable.ic_menu_set_as;
-        if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".ogg")) return android.R.drawable.ic_media_play;
-        return android.R.drawable.ic_menu_info_details;
+        if (lower.endsWith(".doc") || lower.endsWith(".docx") || lower.endsWith(".pdf")) return R.drawable.docs_24px;
+        if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return R.drawable.docs_24px;
+        if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return R.drawable.docs_24px;
+        if (lower.endsWith(".txt") || lower.endsWith(".rtf") || lower.endsWith(".log")) return R.drawable.docs_24px;
+        if (lower.endsWith(".html") || lower.endsWith(".xml") || lower.endsWith(".js") || lower.endsWith(".css") || lower.endsWith(".java") || lower.endsWith(".py") || lower.endsWith(".c") || lower.endsWith(".cpp")) return R.drawable.code_24px;
+        if (lower.endsWith(".zip") || lower.endsWith(".rar") || lower.endsWith(".7z")) return R.drawable.category_24px;
+        if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".ogg")) return R.drawable.audio_file_24px;
+        return R.drawable.category_24px;
     }
 
     @Override
