@@ -36,7 +36,8 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete PDF File"
             app:srcCompat="@drawable/delete_forever_24px"
-            app:tint="@android:color/white" />
+            android:tint="#FFFFFF"
+            app:tint="#FFFFFF" />
 
         <!-- NEW: Share Button -->
         <ImageButton
@@ -48,7 +49,8 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Share PDF File"
             app:srcCompat="@drawable/share_24px"
-            app:tint="@android:color/white" />
+            android:tint="#FFFFFF"
+            app:tint="#FFFFFF" />
 
         <ImageButton
             android:id="@+id/close_button_pdf_viewer"
@@ -59,7 +61,8 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close PDF Viewer"
             app:srcCompat="@drawable/close_24px"
-            app:tint="@android:color/white" />
+            android:tint="#FFFFFF"
+            app:tint="#FFFFFF" />
     </RelativeLayout>
 
     <!-- PDF Page Display -->
@@ -131,7 +134,8 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
                 app:srcCompat="@drawable/open_in_new_24px"
-                app:tint="@android:color/white" />
+                android:tint="#FFFFFF"
+                app:tint="#FFFFFF" />
 
             <ImageButton
                 android:id="@+id/copy_content_button_pdf"
@@ -141,7 +145,8 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Copy Content"
                 app:srcCompat="@drawable/docs_24px"
-                app:tint="@android:color/white" />
+                android:tint="#FFFFFF"
+                app:tint="#FFFFFF" />
 
         </LinearLayout>
 
