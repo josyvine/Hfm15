@@ -36,9 +36,10 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete File"
             app:srcCompat="@drawable/delete_forever_24px"
+            android:tint="#FFFFFF"
             app:tint="@android:color/white" />
 
-        <!-- NEW: Share Button -->
+        <!-- NEW: Share Button - Fixed missing tint -->
         <ImageButton
             android:id="@+id/share_button_viewer"
             android:layout_width="56dp"
@@ -48,6 +49,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Share File"
             app:srcCompat="@drawable/share_24px"
+            android:tint="#FFFFFF"
             app:tint="@android:color/white" />
 
         <ImageButton
@@ -59,6 +61,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Copy Content"
             app:srcCompat="@drawable/docs_24px"
+            android:tint="#FFFFFF"
             app:tint="@android:color/white" />
 
         <ImageButton
@@ -70,6 +73,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Viewer"
             app:srcCompat="@drawable/close_24px"
+            android:tint="#FFFFFF"
             app:tint="@android:color/white" />
     </RelativeLayout>
 
@@ -150,6 +154,7 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
                 app:srcCompat="@drawable/open_in_new_24px"
+                android:tint="#FFFFFF"
                 app:tint="@android:color/white" />
 
         </LinearLayout>
