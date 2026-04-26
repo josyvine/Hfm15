@@ -45,9 +45,8 @@
             android:layout_toStartOf="@+id/close_button_image_viewer"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete Image"
-            app:srcCompat="@drawable/delete_forever_24px"
-            android:tint="#FFFFFF"
-            app:tint="#FFFFFF" />
+            android:src="@drawable/delete_forever_24px"
+            android:tint="#FFFFFF" />
 
         <ImageButton
             android:id="@+id/close_button_image_viewer"
@@ -57,9 +56,8 @@
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Image Viewer"
-            app:srcCompat="@drawable/close_24px"
-            android:tint="#FFFFFF"
-            app:tint="#FFFFFF" />
+            android:src="@drawable/close_24px"
+            android:tint="#FFFFFF" />
     </RelativeLayout>
 
     <!-- Navigation Buttons (Skip Previous / Next File) -->
@@ -74,9 +72,8 @@
         android:elevation="10dp"
         android:padding="12dp"
         android:scaleType="fitCenter"
-        app:srcCompat="@drawable/skip_previous_24px"
-        android:tint="#FFFFFF"
-        app:tint="#FFFFFF" />
+        android:src="@drawable/skip_previous_24px"
+        android:tint="#FFFFFF" />
 
     <ImageButton
         android:id="@+id/next_button_image_viewer"
@@ -89,11 +86,10 @@
         android:elevation="10dp"
         android:padding="12dp"
         android:scaleType="fitCenter"
-        app:srcCompat="@drawable/skip_next_24px"
-        android:tint="#FFFFFF"
-        app:tint="#FFFFFF" />
+        android:src="@drawable/skip_next_24px"
+        android:tint="#FFFFFF" />
 
-    <!-- NEW FOOTER -->
+    <!-- FOOTER CONTROLS -->
     <RelativeLayout
         android:id="@+id/footer_bar_image_viewer"
         android:layout_width="match_parent"
@@ -117,9 +113,8 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
-                app:srcCompat="@drawable/open_in_new_24px"
-                android:tint="#FFFFFF"
-                app:tint="#FFFFFF" />
+                android:src="@drawable/open_in_new_24px"
+                android:tint="#FFFFFF" />
 
             <ImageButton
                 android:id="@+id/share_button_image"
@@ -128,9 +123,8 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Share"
-                app:srcCompat="@drawable/share_24px"
-                android:tint="#FFFFFF"
-                app:tint="#FFFFFF" />
+                android:src="@drawable/share_24px"
+                android:tint="#FFFFFF" />
 
         </LinearLayout>
 
