@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/white">
@@ -34,7 +35,7 @@
             android:layout_toStartOf="@+id/share_button_viewer"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete File"
-            android:src="@android:drawable/ic_menu_delete" />
+            app:srcCompat="@drawable/delete_forever_24px" />
 
         <!-- NEW: Share Button -->
         <ImageButton
@@ -45,7 +46,7 @@
             android:layout_toStartOf="@+id/copy_button_viewer"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Share File"
-            android:src="@android:drawable/ic_menu_share" />
+            app:srcCompat="@drawable/share_24px" />
 
         <ImageButton
             android:id="@+id/copy_button_viewer"
@@ -55,7 +56,7 @@
             android:layout_toStartOf="@+id/close_button_text_viewer"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Copy Content"
-            android:src="@android:drawable/ic_menu_save" />
+            app:srcCompat="@drawable/docs_24px" />
 
         <ImageButton
             android:id="@+id/close_button_text_viewer"
@@ -65,7 +66,7 @@
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Viewer"
-            android:src="@android:drawable/ic_menu_close_clear_cancel" />
+            app:srcCompat="@drawable/close_24px" />
     </RelativeLayout>
 
     <!-- Content Display -->
@@ -143,7 +144,7 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
-                android:src="@android:drawable/ic_menu_set_as" />
+                app:srcCompat="@drawable/open_in_new_24px" />
 
         </LinearLayout>
 
@@ -179,4 +180,3 @@
     </RelativeLayout>
 
 </RelativeLayout>
-
