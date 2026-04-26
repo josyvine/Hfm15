@@ -1,6 +1,7 @@
 package com.hfm.app;
 
 import android.content.Context;
+import android.graphics.PorterDuff;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
@@ -42,14 +44,27 @@ public class RecycleBinAdapter extends RecyclerView.Adapter<RecycleBinAdapter.Vi
         final File file = fileList.get(position);
         holder.fileName.setText(file.getName());
 
+        // Determine contrast color based on theme
+        int contrastColor;
+        String currentTheme = ThemeManager.getTheme(context);
+        if (currentTheme.equals(ThemeManager.THEME_DARK) || currentTheme.equals(ThemeManager.THEME_AMOLED) || currentTheme.equals(ThemeManager.THEME_NORDIC)) {
+            contrastColor = ContextCompat.getColor(context, android.R.color.white);
+        } else {
+            contrastColor = ContextCompat.getColor(context, R.color.lt_colorPrimary);
+        }
+
         // Hide checkbox as it's not needed in the recycle bin view
         holder.checkBox.setVisibility(View.GONE);
 
         if (file.isDirectory()) {
             // UPDATED: Modern yellow folder icon
             holder.fileIcon.setImageResource(R.drawable.ic_folder_modern);
+            // Apply theme-based tint
+            holder.fileIcon.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
         } else {
             holder.fileIcon.setImageResource(getIconForFileType(file.getName()));
+            // Apply theme-based tint
+            holder.fileIcon.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
         }
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
