@@ -218,6 +218,15 @@ public class DashboardActivity extends Activity {
         categoryListLayout.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(this);
 
+        // Determine icon color based on active theme for visibility
+        int iconTintColor;
+        String currentTheme = ThemeManager.getTheme(this);
+        if (currentTheme.equals(ThemeManager.THEME_DARK) || currentTheme.equals(ThemeManager.THEME_AMOLED) || currentTheme.equals(ThemeManager.THEME_NORDIC)) {
+            iconTintColor = ContextCompat.getColor(this, android.R.color.white);
+        } else {
+            iconTintColor = ContextCompat.getColor(this, R.color.lt_colorPrimary);
+        }
+
         for (final Integer categoryId : categoryNames.keySet()) {
             final Map<String, List<File>> folders = categorizedFiles.get(categoryId);
             int count = 0;
@@ -234,6 +243,9 @@ public class DashboardActivity extends Activity {
             TextView counter = categoryView.findViewById(R.id.category_count);
 
             icon.setImageResource(categoryIcons.get(categoryId));
+            // NEW: Apply tint filter for visibility
+            icon.setColorFilter(iconTintColor, PorterDuff.Mode.SRC_IN);
+            
             name.setText(categoryNames.get(categoryId));
             counter.setText("(" + count + ")");
 
