@@ -131,7 +131,8 @@ public class AudioPlayerActivity extends Activity {
 						seekBar.setMax(mp.getDuration());
 						totalTimeTextView.setText(formatDuration(mp.getDuration()));
 						mp.start();
-						playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+						// UPDATED: Use custom pause icon
+						playPauseButton.setImageResource(R.drawable.pause_24px);
 						updateSeekBar();
 					}
 				});
@@ -218,10 +219,12 @@ public class AudioPlayerActivity extends Activity {
         if (mediaPlayer != null) {
             if (mediaPlayer.isPlaying()) {
                 mediaPlayer.pause();
-                playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                // UPDATED: Use custom play icon
+                playPauseButton.setImageResource(R.drawable.play_arrow_24px);
             } else {
                 mediaPlayer.start();
-                playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+                // UPDATED: Use custom pause icon
+                playPauseButton.setImageResource(R.drawable.pause_24px);
                 updateSeekBar();
             }
         }
@@ -237,7 +240,8 @@ public class AudioPlayerActivity extends Activity {
         if (mCurrentIndex < mFilePaths.size() - 1) {
             loadAudioFile(mCurrentIndex + 1);
         } else {
-            playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+            // UPDATED: Use custom play icon when resetting to the beginning
+            playPauseButton.setImageResource(R.drawable.play_arrow_24px);
             seekBar.setProgress(0);
             currentTimeTextView.setText(formatDuration(0));
         }
@@ -251,7 +255,8 @@ public class AudioPlayerActivity extends Activity {
     private void showFileActionDialog() {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
-            playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+            // UPDATED: Use custom play icon
+            playPauseButton.setImageResource(R.drawable.play_arrow_24px);
         }
         final CharSequence[] options = {"Details", "Send to Drop Zone", "Compress", "Hide", "Move to Recycle Bin", "Delete Permanently"};
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
