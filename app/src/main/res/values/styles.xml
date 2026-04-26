@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Define the attributes used for dynamic theme switching -->
-    <attr name="appPrimaryColor" format="color" />
-    <attr name="appBackgroundColor" format="color" />
-    <attr name="appTextColor" format="color" />
-    <attr name="appHeaderTextColor" format="color" />
-
     <!-- Base Theme - DO NOT USE DIRECTLY -->
     <style name="AppThemeBase" parent="android:Theme.DeviceDefault.Light.NoActionBar">
         <item name="android:windowBackground">?attr/appBackgroundColor</item>
