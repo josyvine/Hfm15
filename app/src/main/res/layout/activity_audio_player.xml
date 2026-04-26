@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/white">
@@ -33,7 +34,7 @@
             android:layout_toStartOf="@+id/close_button_audio_player"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete Audio"
-            android:src="@android:drawable/ic_menu_delete" />
+            app:srcCompat="@drawable/delete_forever_24px" />
 
         <ImageButton
             android:id="@+id/close_button_audio_player"
@@ -43,7 +44,7 @@
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Audio Player"
-            android:src="@android:drawable/ic_menu_close_clear_cancel" />
+            app:srcCompat="@drawable/close_24px" />
     </RelativeLayout>
 
     <!-- Player UI -->
@@ -59,7 +60,7 @@
         <ImageView
             android:layout_width="120dp"
             android:layout_height="120dp"
-            android:src="@android:drawable/ic_media_play"
+            app:srcCompat="@drawable/audio_file_24px"
             android:tint="?android:attr/colorPrimary" />
 
         <!-- SeekBar and Timers -->
@@ -106,7 +107,7 @@
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_media_previous"
+                app:srcCompat="@drawable/skip_previous_24px"
                 android:scaleType="fitCenter"/>
 
             <ImageButton
@@ -114,7 +115,7 @@
                 android:layout_width="80dp"
                 android:layout_height="80dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_media_play"
+                app:srcCompat="@drawable/play_arrow_24px"
                 android:layout_marginStart="24dp"
                 android:layout_marginEnd="24dp"
                 android:scaleType="fitCenter"/>
@@ -124,7 +125,7 @@
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_media_next"
+                app:srcCompat="@drawable/skip_next_24px"
                 android:scaleType="fitCenter"/>
         </LinearLayout>
     </LinearLayout>
@@ -152,7 +153,7 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
-                android:src="@android:drawable/ic_menu_set_as" />
+                app:srcCompat="@drawable/open_in_new_24px" />
 
             <ImageButton
                 android:id="@+id/share_button_audio"
@@ -161,7 +162,7 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Share"
-                android:src="@android:drawable/ic_menu_share" />
+                app:srcCompat="@drawable/share_24px" />
 
         </LinearLayout>
 
@@ -197,4 +198,3 @@
     </RelativeLayout>
 
 </RelativeLayout>
-
