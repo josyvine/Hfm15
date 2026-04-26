@@ -138,21 +138,26 @@ public class ReaderAdapter extends RecyclerView.Adapter<ReaderAdapter.ViewHolder
 
     private int getIconForFileType(String fileName) {
         if (fileName == null) {
-            return android.R.drawable.ic_menu_info_details;
+            return R.drawable.category_24px;
         }
         String lowerFileName = fileName.toLowerCase();
-        if (lowerFileName.endsWith(".pdf")) return android.R.drawable.ic_menu_gallery;
-        if (lowerFileName.endsWith(".doc") || lowerFileName.endsWith(".docx")) return android.R.drawable.ic_menu_save;
-        if (lowerFileName.endsWith(".xls") || lowerFileName.endsWith(".xlsx") || lowerFileName.endsWith(".csv")) return android.R.drawable.ic_menu_agenda;
-        if (lowerFileName.endsWith(".ppt") || lowerFileName.endsWith(".pptx")) return android.R.drawable.ic_menu_slideshow;
-        if (lowerFileName.endsWith(".html") || lowerFileName.endsWith(".xml") || lowerFileName.endsWith(".js") || lowerFileName.endsWith(".css") || lowerFileName.endsWith(".java") || lowerFileName.endsWith(".py") || lowerFileName.endsWith(".c") || lowerFileName.endsWith(".cpp") || lowerFileName.endsWith(".php") || lowerFileName.endsWith(".gradle")) return android.R.drawable.ic_menu_edit;
-        if (lowerFileName.endsWith(".zip") || lowerFileName.endsWith(".rar") || lowerFileName.endsWith(".7z") || lowerFileName.endsWith(".tar") || lowerFileName.endsWith(".gz")) return android.R.drawable.ic_menu_set_as;
-        if (lowerFileName.endsWith(".mp3") || lowerFileName.endsWith(".wav") || lowerFileName.endsWith(".ogg") || lowerFileName.endsWith(".m4a")) return android.R.drawable.ic_media_play;
-        if (lowerFileName.endsWith(".mp4") || lowerFileName.endsWith(".mkv") || lowerFileName.endsWith(".avi")) return android.R.drawable.ic_media_play;
-        if (lowerFileName.endsWith(".jpg") || lowerFileName.endsWith(".jpeg") || lowerFileName.endsWith(".png") || lowerFileName.endsWith(".gif")) return android.R.drawable.ic_menu_gallery;
+        
+        // --- UPDATED: Professional icons for Documents ---
+        if (lowerFileName.endsWith(".pdf")) return R.drawable.docs_24px;
+        if (lowerFileName.endsWith(".doc") || lowerFileName.endsWith(".docx")) return R.drawable.docs_24px;
+        if (lowerFileName.endsWith(".xls") || lowerFileName.endsWith(".xlsx") || lowerFileName.endsWith(".csv")) return R.drawable.docs_24px;
+        if (lowerFileName.endsWith(".ppt") || lowerFileName.endsWith(".pptx")) return R.drawable.docs_24px;
+        
+        // --- UPDATED: Professional icons for Scripts and Code ---
+        if (lowerFileName.endsWith(".html") || lowerFileName.endsWith(".xml") || lowerFileName.endsWith(".js") || lowerFileName.endsWith(".css") || lowerFileName.endsWith(".java") || lowerFileName.endsWith(".py") || lowerFileName.endsWith(".c") || lowerFileName.endsWith(".cpp") || lowerFileName.endsWith(".php") || lowerFileName.endsWith(".gradle")) return R.drawable.code_24px;
+        
+        // --- UPDATED: Professional icons for Other types ---
+        if (lowerFileName.endsWith(".zip") || lowerFileName.endsWith(".rar") || lowerFileName.endsWith(".7z") || lowerFileName.endsWith(".tar") || lowerFileName.endsWith(".gz")) return R.drawable.category_24px;
+        if (lowerFileName.endsWith(".mp3") || lowerFileName.endsWith(".wav") || lowerFileName.endsWith(".ogg") || lowerFileName.endsWith(".m4a")) return R.drawable.audio_file_24px;
+        if (lowerFileName.endsWith(".mp4") || lowerFileName.endsWith(".mkv") || lowerFileName.endsWith(".avi")) return R.drawable.video_file_24px;
+        if (lowerFileName.endsWith(".jpg") || lowerFileName.endsWith(".jpeg") || lowerFileName.endsWith(".png") || lowerFileName.endsWith(".gif")) return R.drawable.image_24px;
 
         // Default icon for text and other unknown files
-        return android.R.drawable.ic_menu_view;
+        return R.drawable.docs_24px;
     }
 }
-
