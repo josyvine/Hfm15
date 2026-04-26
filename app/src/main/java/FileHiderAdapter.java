@@ -2,6 +2,7 @@ package com.hfm.app;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.PorterDuff;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +13,7 @@ import android.widget.Filterable;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -63,6 +65,15 @@ public class FileHiderAdapter extends RecyclerView.Adapter<FileHiderAdapter.File
         holder.fileName.setText(file.getName());
         holder.selectionOverlay.setVisibility(item.isSelected() ? View.VISIBLE : View.GONE);
 
+        // Determine contrast color based on theme for generic icons
+        int contrastColor;
+        String currentTheme = ThemeManager.getTheme(context);
+        if (currentTheme.equals(ThemeManager.THEME_DARK) || currentTheme.equals(ThemeManager.THEME_AMOLED) || currentTheme.equals(ThemeManager.THEME_NORDIC)) {
+            contrastColor = ContextCompat.getColor(context, android.R.color.white);
+        } else {
+            contrastColor = ContextCompat.getColor(context, R.color.lt_colorPrimary);
+        }
+
         // Reset listener
         holder.selectionCheckbox.setOnCheckedChangeListener(null);
         holder.selectionCheckbox.setChecked(item.isSelected());
@@ -91,14 +102,18 @@ public class FileHiderAdapter extends RecyclerView.Adapter<FileHiderAdapter.File
             }
         });
 
-        // --- NEW LOGIC: Handle Folder Visualization ---
+        // --- NEW LOGIC: Handle Visualization with Tinting ---
         if (file.isDirectory()) {
-            // Set folder icon and skip Glide loading
+            // Set modern folder icon and apply theme-based tint
             holder.thumbnailImage.setImageResource(R.drawable.ic_folder_modern);
+            holder.thumbnailImage.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
         } else {
             // It's a file, load thumbnail or fallback icon using Glide
             int fallbackIcon = getIconForFileType(file.getName());
             
+            // Clear filters before Glide takes over for media
+            holder.thumbnailImage.clearColorFilter();
+
             Glide.with(context)
                 .load(file)
                 .apply(new RequestOptions()
@@ -107,7 +122,20 @@ public class FileHiderAdapter extends RecyclerView.Adapter<FileHiderAdapter.File
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .centerCrop())
                 .into(holder.thumbnailImage);
+
+            // Re-apply tint if it is a generic icon (not a media thumbnail)
+            if (isGenericIcon(file.getName())) {
+                holder.thumbnailImage.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
+            }
         }
+    }
+
+    private boolean isGenericIcon(String fileName) {
+        if (fileName == null) return true;
+        String lower = fileName.toLowerCase();
+        return !(lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || 
+                 lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".avi") ||
+                 lower.endsWith(".gif") || lower.endsWith(".webp"));
     }
 
     private int getIconForFileType(String fileName) {
