@@ -88,6 +88,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
+            android:background="#4f46e5"
+            android:textColor="#FFFFFF"
             android:text="Previous" />
 
         <TextView
@@ -104,6 +106,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
+            android:background="#4f46e5"
+            android:textColor="#FFFFFF"
             android:text="Next" />
 
     </RelativeLayout>
