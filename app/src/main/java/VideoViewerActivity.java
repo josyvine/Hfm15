@@ -23,7 +23,6 @@ import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.MediaController;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -52,7 +51,7 @@ public class VideoViewerActivity extends Activity {
     private TextView fileNameTextView;
     private ImageButton deleteButton, closeButton, prevButton, nextButton;
 
-    // NEW: Footer Playback Control Buttons
+    // NEW: Linked to modern Google Font icons in the XML
     private ImageButton rewindButton, playPauseFooterButton, forwardButton;
 
     private ImageButton openWithButton;
@@ -65,7 +64,8 @@ public class VideoViewerActivity extends Activity {
     private ArrayList<String> mFilePaths;
     private int mCurrentIndex;
     private boolean mFileDeleted = false;
-    private MediaController mediaController;
+    
+    // Removed legacy MediaController to fix "Double Play" glitch
 
     private BroadcastReceiver deleteCompletionReceiver;
     private BroadcastReceiver compressionBroadcastReceiver;
@@ -88,7 +88,6 @@ public class VideoViewerActivity extends Activity {
             return;
         }
 
-        mediaController = new MediaController(this);
         setupListeners();
         setupBroadcastReceivers();
         loadVideo(mCurrentIndex);
@@ -99,12 +98,12 @@ public class VideoViewerActivity extends Activity {
         fileNameTextView = findViewById(R.id.file_name_video_viewer);
         deleteButton = findViewById(R.id.delete_button_video_viewer);
         closeButton = findViewById(R.id.close_button_video_viewer);
-        
-        // Large navigation buttons (Skip file)
+
+        // Center Navigation buttons (Skip file)
         prevButton = findViewById(R.id.prev_button_video_viewer);
         nextButton = findViewById(R.id.next_button_video_viewer);
-        
-        // New playback buttons (Seek inside file)
+
+        // New playback buttons (Seek inside current file)
         rewindButton = findViewById(R.id.rewind_button_video);
         playPauseFooterButton = findViewById(R.id.play_pause_button_video);
         forwardButton = findViewById(R.id.forward_button_video);
@@ -119,40 +118,40 @@ public class VideoViewerActivity extends Activity {
 
     private void setupListeners() {
         closeButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					onBackPressed();
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        onBackPressed();
+                                }
+                        });
 
         deleteButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					showFileActionDialog();
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        showFileActionDialog();
+                                }
+                        });
 
-        // Skip to Previous File
+        // Skip to Previous Video File
         prevButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					if (mCurrentIndex > 0) {
-						loadVideo(mCurrentIndex - 1);
-					}
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        if (mCurrentIndex > 0) {
+                                                loadVideo(mCurrentIndex - 1);
+                                        }
+                                }
+                        });
 
-        // Skip to Next File
+        // Skip to Next Video File
         nextButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					if (mCurrentIndex < mFilePaths.size() - 1) {
-						loadVideo(mCurrentIndex + 1);
-					}
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        if (mCurrentIndex < mFilePaths.size() - 1) {
+                                                loadVideo(mCurrentIndex + 1);
+                                        }
+                                }
+                        });
 
-        // Play / Pause Toggle
+        // Play / Pause Toggle Fix
         playPauseFooterButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -160,18 +159,19 @@ public class VideoViewerActivity extends Activity {
             }
         });
 
-        // Fast Rewind 10 Seconds
+        // FAST REWIND Logic (10 seconds)
         rewindButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (videoView != null) {
                     int currentPos = videoView.getCurrentPosition();
                     videoView.seekTo(Math.max(0, currentPos - 10000));
+                    Toast.makeText(VideoViewerActivity.this, "-10s", Toast.LENGTH_SHORT).show();
                 }
             }
         });
 
-        // Fast Forward 10 Seconds
+        // FAST FORWARD Logic (10 seconds)
         forwardButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -179,23 +179,24 @@ public class VideoViewerActivity extends Activity {
                     int currentPos = videoView.getCurrentPosition();
                     int duration = videoView.getDuration();
                     videoView.seekTo(Math.min(duration, currentPos + 10000));
+                    Toast.makeText(VideoViewerActivity.this, "+10s", Toast.LENGTH_SHORT).show();
                 }
             }
         });
 
         shareButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					shareFile();
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        shareFile();
+                                }
+                        });
 
         openWithButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					openWith();
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        openWith();
+                                }
+                        });
 
     }
 
@@ -220,25 +221,25 @@ public class VideoViewerActivity extends Activity {
         File videoFile = new File(filePath);
 
         fileNameTextView.setText(videoFile.getName());
-        mediaController.setAnchorView(videoView);
-        videoView.setMediaController(mediaController);
+        
+        // Use clean URI loading without the legacy MediaController
         videoView.setVideoURI(Uri.fromFile(videoFile));
         videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-				@Override
-				public void onPrepared(MediaPlayer mp) {
-					mp.setLooping(true);
-					videoView.start();
-                    // Ensure footer button shows Pause icon when video starts
+                                @Override
+                                public void onPrepared(MediaPlayer mp) {
+                                        mp.setLooping(true);
+                                        videoView.start();
+                    // Set Pause icon because video auto-starts
                     playPauseFooterButton.setImageResource(R.drawable.pause_24px);
-				}
-			});
+                                }
+                        });
         videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-				@Override
-				public boolean onError(MediaPlayer mp, int what, int extra) {
-					Toast.makeText(VideoViewerActivity.this, "Error: Could not play this video file.", Toast.LENGTH_LONG).show();
-					return true;
-				}
-			});
+                                @Override
+                                public boolean onError(MediaPlayer mp, int what, int extra) {
+                                        Toast.makeText(VideoViewerActivity.this, "Error: Could not play this video file.", Toast.LENGTH_LONG).show();
+                                        return true;
+                                }
+                        });
 
         updateNavigationButtons();
     }
@@ -246,8 +247,8 @@ public class VideoViewerActivity extends Activity {
     private void updateNavigationButtons() {
         prevButton.setEnabled(mCurrentIndex > 0);
         nextButton.setEnabled(mCurrentIndex < mFilePaths.size() - 1);
-        
-        // Visual feedback for disabled skip buttons
+
+        // Visibility Fix: Ensure skip buttons are always visible but faded if disabled
         prevButton.setAlpha(mCurrentIndex > 0 ? 1.0f : 0.3f);
         nextButton.setAlpha(mCurrentIndex < mFilePaths.size() - 1 ? 1.0f : 0.3f);
     }
@@ -255,27 +256,27 @@ public class VideoViewerActivity extends Activity {
     private void showFileActionDialog() {
         videoView.pause();
         playPauseFooterButton.setImageResource(R.drawable.play_arrow_24px);
-        
+
         final CharSequence[] options = {"Details", "Send to Drop Zone", "Compress", "Hide", "Move to Recycle Bin", "Delete Permanently"};
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Choose an action");
         builder.setItems(options, new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface dialog, int which) {
-					switch (which) {
-						case 0:
-							showDetailsDialog();
-							break;
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                        switch (which) {
+                                                case 0:
+                                                        showDetailsDialog();
+                                                        break;
                         case 1:
                             showSendToDropDialog(new File(mFilePaths.get(mCurrentIndex)));
                             break;
-						case 2:
-							compressFile();
-							break;
-						case 3:
-							hideFile();
-							break;
-						case 4: // Move to Recycle Bin (Dual Logic)
+                                                case 2:
+                                                        compressFile();
+                                                        break;
+                                                case 3:
+                                                        hideFile();
+                                                        break;
+                                                case 4: // Move to Recycle Bin (Dual Logic)
                             AlertDialog.Builder binBuilder = new AlertDialog.Builder(VideoViewerActivity.this);
                             binBuilder.setTitle("Choose Recycle Bin");
                             binBuilder.setItems(new CharSequence[]{"Phone Recycle Bin", "SD Card Recycle Bin"}, new DialogInterface.OnClickListener() {
@@ -285,20 +286,20 @@ public class VideoViewerActivity extends Activity {
                                 }
                             });
                             binBuilder.show();
-							break;
-						case 5:
-							performFileDeletion();
-							break;
-					}
-				}
-			});
+                                                        break;
+                                                case 5:
+                                                        performFileDeletion();
+                                                        break;
+                                        }
+                                }
+                        });
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-				@Override
-				public void onCancel(DialogInterface dialog) {
-					videoView.start();
+                                @Override
+                                public void onCancel(DialogInterface dialog) {
+                                        videoView.start();
                     playPauseFooterButton.setImageResource(R.drawable.pause_24px);
-				}
-			});
+                                }
+                        });
         builder.show();
     }
 
@@ -336,34 +337,34 @@ public class VideoViewerActivity extends Activity {
         moreButton.setEnabled(ApiKeyManager.getApiKey(this) != null && isConnected);
 
         moreButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					analyzer.analyze(files);
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        analyzer.analyze(files);
+                                }
+                        });
 
         copyButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-					ClipData clip = ClipData.newPlainText("AI Summary", aiDetailsText.getText());
-					clipboard.setPrimaryClip(clip);
-					Toast.makeText(VideoViewerActivity.this, "Summary copied to clipboard.", Toast.LENGTH_SHORT).show();
-				}
-			});
+                                @Override
+                                public void onClick(View v) {
+                                        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                                        ClipData clip = ClipData.newPlainText("AI Summary", aiDetailsText.getText());
+                                        clipboard.setPrimaryClip(clip);
+                                        Toast.makeText(VideoViewerActivity.this, "Summary copied to clipboard.", Toast.LENGTH_SHORT).show();
+                                }
+                        });
 
         closeButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					dialog.dismiss();
-					videoView.start();
+                                @Override
+                                public void onClick(View v) {
+                                        dialog.dismiss();
+                                        videoView.start();
                     playPauseFooterButton.setImageResource(R.drawable.pause_24px);
-				}
-			});
+                                }
+                        });
 
         dialog.show();
     }
-    
+
     private void showSendToDropDialog(final File fileToSend) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = this.getLayoutInflater();
@@ -416,7 +417,7 @@ public class VideoViewerActivity extends Activity {
         intent.putExtra(SenderService.EXTRA_SECRET_NUMBER, secretNumber);
         ContextCompat.startForegroundService(this, intent);
     }
-    
+
     private String generateSecretNumber() {
         SecureRandom random = new SecureRandom();
         byte[] bytes = new byte[16];
@@ -648,7 +649,7 @@ public class VideoViewerActivity extends Activity {
                         loadVideo(mCurrentIndex);
                     }
                 } else {
-					Toast.makeText(VideoViewerActivity.this, "Failed to delete the file.", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(VideoViewerActivity.this, "Failed to delete the file.", Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -663,7 +664,7 @@ public class VideoViewerActivity extends Activity {
         LocalBroadcastManager.getInstance(this).registerReceiver(compressionBroadcastReceiver, new IntentFilter(CompressionService.ACTION_COMPRESSION_COMPLETE));
     }
 
-	@Override
+        @Override
     protected void onDestroy() {
         if (deleteCompletionReceiver != null) {
             LocalBroadcastManager.getInstance(this).unregisterReceiver(deleteCompletionReceiver);
