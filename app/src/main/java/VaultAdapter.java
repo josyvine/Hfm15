@@ -1,6 +1,7 @@
 package com.hfm.app;
 
 import android.content.Context;
+import android.graphics.PorterDuff;
 import android.text.format.Formatter;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
@@ -41,6 +43,15 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.VaultViewHol
     public void onBindViewHolder(@NonNull VaultViewHolder holder, int position) {
         final File file = fileList.get(position);
         
+        // Determine contrast color based on theme
+        int contrastColor;
+        String currentTheme = ThemeManager.getTheme(context);
+        if (currentTheme.equals(ThemeManager.THEME_DARK) || currentTheme.equals(ThemeManager.THEME_AMOLED) || currentTheme.equals(ThemeManager.THEME_NORDIC)) {
+            contrastColor = ContextCompat.getColor(context, android.R.color.white);
+        } else {
+            contrastColor = ContextCompat.getColor(context, R.color.lt_colorPrimary);
+        }
+
         // DISPLAY LOGIC: Strip the security UUID prefix for the UI.
         // The prefix is the first 8 characters (UUID) plus the underscore.
         String rawName = file.getName();
@@ -54,6 +65,9 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.VaultViewHol
         
         // ICON LOGIC: Set icon based on extension
         holder.fileIcon.setImageResource(getIconForFileType(displayName));
+        
+        // Apply theme-based tint for visibility
+        holder.fileIcon.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
