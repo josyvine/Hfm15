@@ -196,19 +196,19 @@ public class SearchAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     private int getIconForFileType(String fileName) {
-        if (fileName == null) return android.R.drawable.ic_menu_info_details;
+        if (fileName == null) return R.drawable.category_24px;
         String lower = fileName.toLowerCase();
         
-        if (lower.endsWith(".doc") || lower.endsWith(".docx")) return android.R.drawable.ic_menu_save;
-        if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return android.R.drawable.ic_menu_agenda;
-        if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return android.R.drawable.ic_menu_slideshow;
-        if (lower.endsWith(".pdf")) return android.R.drawable.ic_menu_view;
-        if (lower.endsWith(".txt") || lower.endsWith(".log")) return android.R.drawable.ic_menu_edit;
-        if (lower.endsWith(".zip") || lower.endsWith(".rar")) return android.R.drawable.ic_menu_set_as;
-        if (lower.endsWith(".mp3") || lower.endsWith(".wav")) return android.R.drawable.ic_media_play;
-        if (isMediaFile(fileName)) return android.R.drawable.ic_menu_gallery;
+        if (lower.endsWith(".doc") || lower.endsWith(".docx")) return R.drawable.docs_24px;
+        if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return R.drawable.docs_24px;
+        if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return R.drawable.docs_24px;
+        if (lower.endsWith(".pdf")) return R.drawable.docs_24px;
+        if (lower.endsWith(".txt") || lower.endsWith(".log")) return R.drawable.docs_24px;
+        if (lower.endsWith(".zip") || lower.endsWith(".rar")) return R.drawable.category_24px;
+        if (lower.endsWith(".mp3") || lower.endsWith(".wav")) return R.drawable.audio_file_24px;
+        if (isMediaFile(fileName)) return R.drawable.image_24px;
         
-        return android.R.drawable.ic_menu_info_details;
+        return R.drawable.category_24px;
     }
 
     // --- RESTORED HELPER METHODS FOR PDF/APK LOGIC ---
