@@ -52,6 +52,9 @@ public class VideoViewerActivity extends Activity {
     private TextView fileNameTextView;
     private ImageButton deleteButton, closeButton, prevButton, nextButton;
 
+    // NEW: Footer Playback Control Buttons
+    private ImageButton rewindButton, playPauseFooterButton, forwardButton;
+
     private ImageButton openWithButton;
     private ImageButton shareButton;
 
@@ -96,8 +99,16 @@ public class VideoViewerActivity extends Activity {
         fileNameTextView = findViewById(R.id.file_name_video_viewer);
         deleteButton = findViewById(R.id.delete_button_video_viewer);
         closeButton = findViewById(R.id.close_button_video_viewer);
+        
+        // Large navigation buttons (Skip file)
         prevButton = findViewById(R.id.prev_button_video_viewer);
         nextButton = findViewById(R.id.next_button_video_viewer);
+        
+        // New playback buttons (Seek inside file)
+        rewindButton = findViewById(R.id.rewind_button_video);
+        playPauseFooterButton = findViewById(R.id.play_pause_button_video);
+        forwardButton = findViewById(R.id.forward_button_video);
+
         openWithButton = findViewById(R.id.open_with_button_video);
         shareButton = findViewById(R.id.share_button_video);
         deletionProgressLayout = findViewById(R.id.deletion_progress_layout);
@@ -121,6 +132,7 @@ public class VideoViewerActivity extends Activity {
 				}
 			});
 
+        // Skip to Previous File
         prevButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View v) {
@@ -130,6 +142,7 @@ public class VideoViewerActivity extends Activity {
 				}
 			});
 
+        // Skip to Next File
         nextButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View v) {
@@ -138,6 +151,37 @@ public class VideoViewerActivity extends Activity {
 					}
 				}
 			});
+
+        // Play / Pause Toggle
+        playPauseFooterButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                togglePlayPause();
+            }
+        });
+
+        // Fast Rewind 10 Seconds
+        rewindButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (videoView != null) {
+                    int currentPos = videoView.getCurrentPosition();
+                    videoView.seekTo(Math.max(0, currentPos - 10000));
+                }
+            }
+        });
+
+        // Fast Forward 10 Seconds
+        forwardButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (videoView != null) {
+                    int currentPos = videoView.getCurrentPosition();
+                    int duration = videoView.getDuration();
+                    videoView.seekTo(Math.min(duration, currentPos + 10000));
+                }
+            }
+        });
 
         shareButton.setOnClickListener(new View.OnClickListener() {
 				@Override
@@ -153,6 +197,18 @@ public class VideoViewerActivity extends Activity {
 				}
 			});
 
+    }
+
+    private void togglePlayPause() {
+        if (videoView != null) {
+            if (videoView.isPlaying()) {
+                videoView.pause();
+                playPauseFooterButton.setImageResource(R.drawable.play_arrow_24px);
+            } else {
+                videoView.start();
+                playPauseFooterButton.setImageResource(R.drawable.pause_24px);
+            }
+        }
     }
 
     private void loadVideo(int index) {
@@ -172,6 +228,8 @@ public class VideoViewerActivity extends Activity {
 				public void onPrepared(MediaPlayer mp) {
 					mp.setLooping(true);
 					videoView.start();
+                    // Ensure footer button shows Pause icon when video starts
+                    playPauseFooterButton.setImageResource(R.drawable.pause_24px);
 				}
 			});
         videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
@@ -188,10 +246,16 @@ public class VideoViewerActivity extends Activity {
     private void updateNavigationButtons() {
         prevButton.setEnabled(mCurrentIndex > 0);
         nextButton.setEnabled(mCurrentIndex < mFilePaths.size() - 1);
+        
+        // Visual feedback for disabled skip buttons
+        prevButton.setAlpha(mCurrentIndex > 0 ? 1.0f : 0.3f);
+        nextButton.setAlpha(mCurrentIndex < mFilePaths.size() - 1 ? 1.0f : 0.3f);
     }
 
     private void showFileActionDialog() {
         videoView.pause();
+        playPauseFooterButton.setImageResource(R.drawable.play_arrow_24px);
+        
         final CharSequence[] options = {"Details", "Send to Drop Zone", "Compress", "Hide", "Move to Recycle Bin", "Delete Permanently"};
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Choose an action");
@@ -232,6 +296,7 @@ public class VideoViewerActivity extends Activity {
 				@Override
 				public void onCancel(DialogInterface dialog) {
 					videoView.start();
+                    playPauseFooterButton.setImageResource(R.drawable.pause_24px);
 				}
 			});
         builder.show();
@@ -292,6 +357,7 @@ public class VideoViewerActivity extends Activity {
 				public void onClick(View v) {
 					dialog.dismiss();
 					videoView.start();
+                    playPauseFooterButton.setImageResource(R.drawable.pause_24px);
 				}
 			});
 
