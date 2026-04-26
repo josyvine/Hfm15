@@ -76,23 +76,23 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.VaultViewHol
         // Video Icons
         if (lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".avi") || 
             lower.endsWith(".webm") || lower.endsWith(".3gp")) {
-            return android.R.drawable.ic_media_play;
+            return R.drawable.video_file_24px;
         }
         
         // Image Icons
         if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || 
             lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".bmp")) {
-            return android.R.drawable.ic_menu_gallery;
+            return R.drawable.image_24px;
         }
         
         // Document Icons
         if (lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx") || 
             lower.endsWith(".txt") || lower.endsWith(".log")) {
-            return android.R.drawable.ic_menu_view;
+            return R.drawable.docs_24px;
         }
         
         // Default Fallback
-        return android.R.drawable.ic_menu_info_details;
+        return R.drawable.category_24px;
     }
 
     public static class VaultViewHolder extends RecyclerView.ViewHolder {
