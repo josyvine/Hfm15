@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white">
+    android:background="?attr/appBackgroundColor">
 
     <!-- Top Bar with Title and Close Button -->
     <RelativeLayout
@@ -18,7 +19,7 @@
             android:layout_centerVertical="true"
             android:layout_marginStart="16dp"
             android:text="Daily File Dashboard"
-            android:textColor="@android:color/white"
+            android:textColor="?attr/appHeaderTextColor"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -30,7 +31,8 @@
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close"
-            android:src="@android:drawable/ic_menu_close_clear_cancel" />
+            android:src="@drawable/close_24px"
+            android:tint="@android:color/white" />
     </RelativeLayout>
 
     <!-- Main Content Area -->
@@ -59,7 +61,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Internal Storage"
-                    android:textColor="@android:color/black"
+                    android:textColor="?attr/appTextColor"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
@@ -79,7 +81,7 @@
                     android:layout_gravity="end"
                     android:layout_marginTop="4dp"
                     android:text="0 GB / 0 GB"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="?android:attr/textColorSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -105,7 +107,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="External Storage (SD Card)"
-                        android:textColor="@android:color/black"
+                        android:textColor="?attr/appTextColor"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -125,7 +127,7 @@
                         android:layout_gravity="end"
                         android:layout_marginTop="4dp"
                         android:text="Not Available"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="?android:attr/textColorSecondary"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -153,7 +155,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="OTG Storage (USB)"
-                        android:textColor="@android:color/black"
+                        android:textColor="?attr/appTextColor"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -173,7 +175,7 @@
                         android:layout_gravity="end"
                         android:layout_marginTop="4dp"
                         android:text="Not Available"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="?android:attr/textColorSecondary"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -193,7 +195,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:text="Files Received Today"
-                android:textColor="@android:color/black"
+                android:textColor="?attr/appTextColor"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -214,7 +216,7 @@
         android:id="@+id/loading_overlay_dashboard"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/white"
+        android:background="?attr/appBackgroundColor"
         android:visibility="gone"
         android:clickable="true"
         android:focusable="true">
@@ -236,7 +238,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Analyzing today's files..."
-                android:textColor="@android:color/black"
+                android:textColor="?attr/appTextColor"
                 android:textSize="16sp" />
         </LinearLayout>
     </RelativeLayout>
