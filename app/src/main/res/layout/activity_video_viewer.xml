@@ -10,8 +10,6 @@
         android:id="@+id/video_view_full"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@+id/footer_bar_video_viewer"
-        android:layout_below="@+id/top_bar_video_viewer"
         android:layout_centerInParent="true" />
 
     <!-- Top Bar -->
@@ -44,8 +42,8 @@
             android:layout_toStartOf="@+id/close_button_video_viewer"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete Video"
-            app:srcCompat="@drawable/delete_forever_24px"
-            app:tint="@android:color/white" />
+            android:src="@drawable/delete_forever_24px"
+            android:tint="@android:color/white" />
 
         <ImageButton
             android:id="@+id/close_button_video_viewer"
@@ -55,11 +53,11 @@
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Video Viewer"
-            app:srcCompat="@drawable/close_24px"
-            app:tint="@android:color/white" />
+            android:src="@drawable/close_24px"
+            android:tint="@android:color/white" />
     </RelativeLayout>
 
-    <!-- Center Navigation (Skip Previous / Next) -->
+    <!-- Center Navigation (Skip Previous / Next File) -->
     <ImageButton
         android:id="@+id/prev_button_video_viewer"
         android:layout_width="56dp"
@@ -71,8 +69,8 @@
         android:elevation="5dp"
         android:padding="12dp"
         android:scaleType="fitCenter"
-        app:srcCompat="@drawable/skip_previous_24px"
-        app:tint="@android:color/white" />
+        android:src="@drawable/skip_previous_24px"
+        android:tint="@android:color/white" />
 
     <ImageButton
         android:id="@+id/next_button_video_viewer"
@@ -85,34 +83,32 @@
         android:elevation="5dp"
         android:padding="12dp"
         android:scaleType="fitCenter"
-        app:srcCompat="@drawable/skip_next_24px"
-        app:tint="@android:color/white" />
+        android:src="@drawable/skip_next_24px"
+        android:tint="@android:color/white" />
 
-    <!-- NEW FOOTER CONTROLS -->
+    <!-- FOOTER PLAYER CONTROLS (Seek Forward/Rewind and Play/Pause) -->
     <RelativeLayout
         android:id="@+id/footer_bar_video_viewer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:background="#B3000000"
-        android:padding="8dp">
+        android:padding="12dp">
 
-        <!-- Internal Seek Controls -->
         <LinearLayout
             android:id="@+id/playback_control_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:orientation="horizontal"
-            android:paddingBottom="8dp">
+            android:orientation="horizontal">
 
             <ImageButton
                 android:id="@+id/rewind_button_video"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                app:srcCompat="@drawable/fast_rewind_24px"
-                app:tint="@android:color/white" />
+                android:src="@drawable/fast_rewind_24px"
+                android:tint="@android:color/white" />
 
             <ImageButton
                 android:id="@+id/play_pause_button_video"
@@ -121,16 +117,16 @@
                 android:layout_marginStart="24dp"
                 android:layout_marginEnd="24dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                app:srcCompat="@drawable/pause_24px"
-                app:tint="@android:color/white" />
+                android:src="@drawable/pause_24px"
+                android:tint="@android:color/white" />
 
             <ImageButton
                 android:id="@+id/forward_button_video"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                app:srcCompat="@drawable/fast_forward_24px"
-                app:tint="@android:color/white" />
+                android:src="@drawable/fast_forward_24px"
+                android:tint="@android:color/white" />
         </LinearLayout>
 
         <LinearLayout
@@ -138,6 +134,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/playback_control_layout"
+            android:layout_marginTop="8dp"
             android:gravity="center"
             android:orientation="horizontal">
 
@@ -148,8 +145,8 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
-                app:srcCompat="@drawable/open_in_new_24px"
-                app:tint="@android:color/white" />
+                android:src="@drawable/open_in_new_24px"
+                android:tint="@android:color/white" />
 
             <ImageButton
                 android:id="@+id/share_button_video"
@@ -158,8 +155,8 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Share"
-                app:srcCompat="@drawable/share_24px"
-                app:tint="@android:color/white" />
+                android:src="@drawable/share_24px"
+                android:tint="@android:color/white" />
 
         </LinearLayout>
 
