@@ -124,12 +124,13 @@ public class DashboardActivity extends Activity {
         categoryNames.put(CATEGORY_SCRIPTS, "Scripts and codes received today");
         categoryNames.put(CATEGORY_OTHER, "Other files received today");
 
-        categoryIcons.put(CATEGORY_IMAGES, android.R.drawable.ic_menu_gallery);
-        categoryIcons.put(CATEGORY_VIDEOS, android.R.drawable.ic_media_play);
-        categoryIcons.put(CATEGORY_AUDIO, android.R.drawable.ic_media_play);
-        categoryIcons.put(CATEGORY_DOCS, android.R.drawable.ic_menu_save);
-        categoryIcons.put(CATEGORY_SCRIPTS, android.R.drawable.ic_menu_edit);
-        categoryIcons.put(CATEGORY_OTHER, android.R.drawable.ic_menu_info_details);
+        // --- UPDATED: Replaced system icons with new Google Fonts vector icons ---
+        categoryIcons.put(CATEGORY_IMAGES, R.drawable.image_24px);
+        categoryIcons.put(CATEGORY_VIDEOS, R.drawable.video_file_24px);
+        categoryIcons.put(CATEGORY_AUDIO, R.drawable.audio_file_24px);
+        categoryIcons.put(CATEGORY_DOCS, R.drawable.docs_24px);
+        categoryIcons.put(CATEGORY_SCRIPTS, R.drawable.code_24px);
+        categoryIcons.put(CATEGORY_OTHER, R.drawable.category_24px);
     }
 
     @Override
