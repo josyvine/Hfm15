@@ -3,6 +3,7 @@ package com.hfm.app;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.PorterDuff;
 import android.media.ThumbnailUtils;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -14,6 +15,7 @@ import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -92,6 +94,15 @@ public class FolderListExpandableAdapter extends RecyclerView.Adapter<RecyclerVi
     @Override
     public void onBindViewHolder(@NonNull final RecyclerView.ViewHolder holder, int position) {
         int viewType = getItemViewType(position);
+
+        // Determine contrast color based on theme
+        int contrastColor;
+        String currentTheme = ThemeManager.getTheme(context);
+        if (currentTheme.equals(ThemeManager.THEME_DARK) || currentTheme.equals(ThemeManager.THEME_AMOLED) || currentTheme.equals(ThemeManager.THEME_NORDIC)) {
+            contrastColor = ContextCompat.getColor(context, android.R.color.white);
+        } else {
+            contrastColor = ContextCompat.getColor(context, R.color.lt_colorPrimary);
+        }
         
         if (viewType == TYPE_HEADER) {
             HeaderViewHolder headerHolder = (HeaderViewHolder) holder;
@@ -102,6 +113,9 @@ public class FolderListExpandableAdapter extends RecyclerView.Adapter<RecyclerVi
             
             // Minimize/Expand Arrow
             headerHolder.arrowIcon.setRotation(folderHeader.isExpanded() ? 0f : 180f);
+            
+            // NEW: Apply tint to the arrow for visibility
+            headerHolder.arrowIcon.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
             
             // Whole header is clickable to toggle expansion
             headerHolder.itemView.setOnClickListener(new View.OnClickListener() {
@@ -121,6 +135,9 @@ public class FolderListExpandableAdapter extends RecyclerView.Adapter<RecyclerVi
             
             // Use Glide for thumbnails to match other updated adapters
             int fallbackIcon = getIconForFileType(file.getName());
+
+            // Clear any previous filters before Glide takes over (important for media files)
+            itemHolder.fileIcon.clearColorFilter();
             
             Glide.with(context)
                 .load(file)
@@ -131,6 +148,11 @@ public class FolderListExpandableAdapter extends RecyclerView.Adapter<RecyclerVi
                     .centerCrop())
                 .into(itemHolder.fileIcon);
 
+            // NEW: If it is a generic icon (not a media thumbnail), apply the contrast tint
+            if (isGenericIcon(file.getName())) {
+                itemHolder.fileIcon.setColorFilter(contrastColor, PorterDuff.Mode.SRC_IN);
+            }
+
             itemHolder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -138,6 +160,15 @@ public class FolderListExpandableAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
         }
+    }
+
+    private boolean isGenericIcon(String fileName) {
+        if (fileName == null) return true;
+        String lower = fileName.toLowerCase();
+        // Media files will have thumbnails; other files use tinted generic icons
+        return !(lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || 
+                 lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".avi") ||
+                 lower.endsWith(".gif") || lower.endsWith(".webp"));
     }
 
     @Override
