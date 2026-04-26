@@ -10,7 +10,8 @@
         android:id="@+id/top_bar_audio_player"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="?android:attr/colorPrimary">
+        android:background="?android:attr/colorPrimary"
+        android:elevation="4dp">
 
         <TextView
             android:id="@+id/file_name_audio_player"
@@ -34,7 +35,8 @@
             android:layout_toStartOf="@+id/close_button_audio_player"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete Audio"
-            app:srcCompat="@drawable/delete_forever_24px" />
+            app:srcCompat="@drawable/delete_forever_24px"
+            app:tint="@android:color/white" />
 
         <ImageButton
             android:id="@+id/close_button_audio_player"
@@ -44,7 +46,8 @@
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Audio Player"
-            app:srcCompat="@drawable/close_24px" />
+            app:srcCompat="@drawable/close_24px"
+            app:tint="@android:color/white" />
     </RelativeLayout>
 
     <!-- Player UI -->
@@ -58,10 +61,11 @@
         android:padding="24dp">
 
         <ImageView
+            android:id="@+id/audio_art_placeholder"
             android:layout_width="120dp"
             android:layout_height="120dp"
             app:srcCompat="@drawable/audio_file_24px"
-            android:tint="?android:attr/colorPrimary" />
+            app:tint="?android:attr/colorPrimary" />
 
         <!-- SeekBar and Timers -->
         <RelativeLayout
@@ -74,6 +78,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentStart="true"
+                android:textColor="@android:color/black"
                 android:text="00:00" />
 
             <SeekBar
@@ -91,6 +96,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
+                android:textColor="@android:color/black"
                 android:text="00:00" />
         </RelativeLayout>
 
@@ -108,6 +114,7 @@
                 android:layout_height="64dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/skip_previous_24px"
+                app:tint="?android:attr/colorPrimary"
                 android:scaleType="fitCenter"/>
 
             <ImageButton
@@ -116,6 +123,7 @@
                 android:layout_height="80dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/play_arrow_24px"
+                app:tint="?android:attr/colorPrimary"
                 android:layout_marginStart="24dp"
                 android:layout_marginEnd="24dp"
                 android:scaleType="fitCenter"/>
@@ -126,6 +134,7 @@
                 android:layout_height="64dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@drawable/skip_next_24px"
+                app:tint="?android:attr/colorPrimary"
                 android:scaleType="fitCenter"/>
         </LinearLayout>
     </LinearLayout>
@@ -137,7 +146,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:background="?android:attr/colorPrimary"
-        android:padding="8dp">
+        android:padding="8dp"
+        android:elevation="4dp">
 
         <LinearLayout
             android:id="@+id/footer_buttons_layout"
@@ -153,7 +163,8 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open With"
-                app:srcCompat="@drawable/open_in_new_24px" />
+                app:srcCompat="@drawable/open_in_new_24px"
+                app:tint="@android:color/white" />
 
             <ImageButton
                 android:id="@+id/share_button_audio"
@@ -162,7 +173,8 @@
                 android:layout_weight="1"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Share"
-                app:srcCompat="@drawable/share_24px" />
+                app:srcCompat="@drawable/share_24px"
+                app:tint="@android:color/white" />
 
         </LinearLayout>
 
@@ -173,6 +185,7 @@
             android:layout_height="wrap_content"
             android:layout_alignTop="@id/footer_buttons_layout"
             android:layout_alignBottom="@id/footer_buttons_layout"
+            android:background="?android:attr/colorPrimary"
             android:visibility="gone">
 
             <ProgressBar
