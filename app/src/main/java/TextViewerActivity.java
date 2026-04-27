@@ -75,7 +75,6 @@ public class TextViewerActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeManager.applyTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_text_viewer);
 
