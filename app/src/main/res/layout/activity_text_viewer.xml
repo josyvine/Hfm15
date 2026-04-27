@@ -3,14 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white">
+    android:background="#000000">
 
     <!-- Top Bar with Filename, Delete, Copy, and Close Buttons -->
     <RelativeLayout
         android:id="@+id/top_bar_text_viewer"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="?android:attr/colorPrimary"
+        android:background="#000000"
         android:elevation="4dp">
 
         <TextView
@@ -90,7 +90,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="16dp"
-            android:textColor="@android:color/black"
+            android:textColor="@android:color/white"
             android:textSize="14sp"
             android:textIsSelectable="true" />
     </ScrollView>
@@ -101,7 +101,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@+id/footer_bar_text_viewer"
-        android:background="#F5F5F5"
+        android:background="#000000"
         android:padding="8dp">
 
         <Button
@@ -119,7 +119,7 @@
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="Page 1 / 1"
-            android:textColor="@android:color/black"
+            android:textColor="@android:color/white"
             android:textSize="16sp" />
 
         <Button
@@ -139,7 +139,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:background="?android:attr/colorPrimary"
+        android:background="#000000"
         android:padding="8dp"
         android:elevation="4dp">
 
@@ -170,7 +170,7 @@
             android:layout_height="wrap_content"
             android:layout_alignTop="@id/footer_buttons_layout"
             android:layout_alignBottom="@id/footer_buttons_layout"
-            android:background="?android:attr/colorPrimary"
+            android:background="#000000"
             android:visibility="gone">
 
             <ProgressBar
