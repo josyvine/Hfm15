@@ -118,29 +118,29 @@
         <activity
             android:name=".TextViewerActivity"
             android:label="Text Viewer"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/AppTheme.MainActivity"
             android:exported="false"/>
         <activity
             android:name=".PdfViewerActivity"
             android:label="PDF Viewer"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/AppTheme.MainActivity"
             android:exported="false"/>
 
         <activity
             android:name=".ImageViewerActivity"
             android:label="Image Viewer"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/AppTheme.MainActivity"
             android:exported="false"/>
         <activity
             android:name=".VideoViewerActivity"
             android:label="Video Viewer"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/AppTheme.MainActivity"
             android:exported="false"/>
 
         <activity
             android:name=".AudioPlayerActivity"
             android:label="Audio Player"
-            android:theme="@style/AppTheme.Light"
+            android:theme="@style/AppTheme.MainActivity"
             android:exported="false"/>
 
         <activity
