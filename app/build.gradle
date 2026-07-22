@@ -2,11 +2,11 @@ apply plugin: 'com.android.application'
 apply plugin: 'com.google.gms.google-services'
 
 android {
-    namespace 'com.hfm.app'
+    namespace 'com.vineyard.hfm.app'
     compileSdkVersion 34
 
     defaultConfig {
-        applicationId "com.hfm.app"
+        applicationId "com.vineyard.hfm.app"
         minSdkVersion 23
         targetSdkVersion 34
         versionCode 1

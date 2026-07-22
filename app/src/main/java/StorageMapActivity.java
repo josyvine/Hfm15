@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;

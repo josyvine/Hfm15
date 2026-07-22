@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -35,11 +35,11 @@ public class FileOperationService extends Service {
     private static final String CHANNEL_ID = "FileOperationChannel";
     private static final int NOTIFICATION_ID = 2;
 
-    public static final String ACTION_START_OPERATION = "com.hfm.app.action.START_OPERATION";
-    public static final String ACTION_STOP_OPERATION = "com.hfm.app.action.STOP_OPERATION";
+    public static final String ACTION_START_OPERATION = "com.vineyard.hfm.app.action.START_OPERATION";
+    public static final String ACTION_STOP_OPERATION = "com.vineyard.hfm.app.action.STOP_OPERATION";
 
-    public static final String ACTION_OPERATION_PROGRESS = "com.hfm.app.action.OPERATION_PROGRESS";
-    public static final String ACTION_OPERATION_COMPLETE = "com.hfm.app.action.OPERATION_COMPLETE";
+    public static final String ACTION_OPERATION_PROGRESS = "com.vineyard.hfm.app.action.OPERATION_PROGRESS";
+    public static final String ACTION_OPERATION_COMPLETE = "com.vineyard.hfm.app.action.OPERATION_COMPLETE";
 
     public static final String EXTRA_SOURCE_FILES = "source_files";
     public static final String EXTRA_DESTINATION_DIR = "destination_dir";

@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -170,7 +170,7 @@ public class SecureVaultManager {
             // Generate URI via FileProvider
             Uri fileUri = FileProvider.getUriForFile(
                     context, 
-                    "com.hfm.app.provider", 
+                    "com.vineyard.hfm.app.provider", 
                     tempPlayFile
             );
 

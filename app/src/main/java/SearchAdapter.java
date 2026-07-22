@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -25,8 +25,8 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
 
-import com.hfm.app.SearchActivity.DateHeader;
-import com.hfm.app.SearchActivity.SearchResult;
+import com.vineyard.hfm.app.SearchActivity.DateHeader;
+import com.vineyard.hfm.app.SearchActivity.SearchResult;
 
 import java.io.IOException;
 import java.util.List;

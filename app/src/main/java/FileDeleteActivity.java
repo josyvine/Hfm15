@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -282,7 +282,7 @@ public class FileDeleteActivity extends Activity {
         copyButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                com.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.hfm.app.ClipboardManager.Operation.COPY);
+                com.vineyard.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.vineyard.hfm.app.ClipboardManager.Operation.COPY);
                 Toast.makeText(FileDeleteActivity.this, selectedFiles.size() + " item(s) ready to copy. Navigate to a folder to paste.", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
             }
@@ -291,7 +291,7 @@ public class FileDeleteActivity extends Activity {
         moveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                com.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.hfm.app.ClipboardManager.Operation.MOVE);
+                com.vineyard.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.vineyard.hfm.app.ClipboardManager.Operation.MOVE);
                 Toast.makeText(FileDeleteActivity.this, selectedFiles.size() + " item(s) ready to move. Navigate to a folder to paste.", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
             }

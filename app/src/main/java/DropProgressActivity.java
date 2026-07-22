@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -22,9 +22,9 @@ import java.util.Locale;
 public class DropProgressActivity extends Activity {
 
     // Actions defined in services
-    public static final String ACTION_UPDATE_STATUS = "com.hfm.app.action.UPDATE_STATUS";
-    public static final String ACTION_TRANSFER_COMPLETE = "com.hfm.app.action.TRANSFER_COMPLETE";
-    public static final String ACTION_TRANSFER_ERROR = "com.hfm.app.action.TRANSFER_ERROR";
+    public static final String ACTION_UPDATE_STATUS = "com.vineyard.hfm.app.action.UPDATE_STATUS";
+    public static final String ACTION_TRANSFER_COMPLETE = "com.vineyard.hfm.app.action.TRANSFER_COMPLETE";
+    public static final String ACTION_TRANSFER_ERROR = "com.vineyard.hfm.app.action.TRANSFER_ERROR";
 
     // Extras for the intent
     public static final String EXTRA_STATUS_MAJOR = "status_major";

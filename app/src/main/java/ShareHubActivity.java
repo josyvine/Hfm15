@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.Manifest;
 import android.app.Activity;
@@ -49,7 +49,7 @@ public class ShareHubActivity extends FragmentActivity implements WifiP2pManager
 
     private static final String TAG = "ShareHubActivity";
     private static final int CATEGORY_PICKER_REQUEST_CODE = 200;
-    public static final String ACTION_DISCONNECT_WIFI_P2P = "com.hfm.app.DISCONNECT_WIFI_P2P";
+    public static final String ACTION_DISCONNECT_WIFI_P2P = "com.vineyard.hfm.app.DISCONNECT_WIFI_P2P";
 
     // --- FIX 2: Modern permission handling launchers ---
     private ActivityResultLauncher<Intent> storagePermissionLauncher;

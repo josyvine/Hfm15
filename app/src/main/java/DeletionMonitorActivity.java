@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;

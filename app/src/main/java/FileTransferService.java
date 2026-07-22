@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -49,14 +49,14 @@ public class FileTransferService extends Service {
     public static final int PORT = 8988;
 
     // --- Actions ---
-    public static final String ACTION_SEND_FILES = "com.hfm.app.SEND_FILES";
-    public static final String ACTION_RECEIVE_FILES = "com.hfm.app.RECEIVE_FILES";
-    public static final String ACTION_PAUSE_TRANSFER = "com.hfm.app.PAUSE_TRANSFER";
-    public static final String ACTION_RESUME_TRANSFER = "com.hfm.app.RESUME_TRANSFER";
-    public static final String ACTION_CANCEL_TRANSFER = "com.hfm.app.CANCEL_TRANSFER";
-    public static final String ACTION_UPDATE_PROGRESS = "com.hfm.app.UPDATE_PROGRESS";
-    public static final String ACTION_TRANSFER_COMPLETE = "com.hfm.app.TRANSFER_COMPLETE";
-    public static final String ACTION_TRANSFER_ERROR = "com.hfm.app.TRANSFER_ERROR";
+    public static final String ACTION_SEND_FILES = "com.vineyard.hfm.app.SEND_FILES";
+    public static final String ACTION_RECEIVE_FILES = "com.vineyard.hfm.app.RECEIVE_FILES";
+    public static final String ACTION_PAUSE_TRANSFER = "com.vineyard.hfm.app.PAUSE_TRANSFER";
+    public static final String ACTION_RESUME_TRANSFER = "com.vineyard.hfm.app.RESUME_TRANSFER";
+    public static final String ACTION_CANCEL_TRANSFER = "com.vineyard.hfm.app.CANCEL_TRANSFER";
+    public static final String ACTION_UPDATE_PROGRESS = "com.vineyard.hfm.app.UPDATE_PROGRESS";
+    public static final String ACTION_TRANSFER_COMPLETE = "com.vineyard.hfm.app.TRANSFER_COMPLETE";
+    public static final String ACTION_TRANSFER_ERROR = "com.vineyard.hfm.app.TRANSFER_ERROR";
 
     // --- Extras ---
     public static final String EXTRA_FILE_PATHS = "file_paths";

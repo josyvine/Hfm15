@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -42,8 +42,8 @@ public class DownloadService extends Service {
     private static final String NOTIFICATION_CHANNEL_ID = "DownloadServiceChannel";
     private static final int NOTIFICATION_ID = 1002;
 
-    public static final String ACTION_DOWNLOAD_ERROR = "com.hfm.app.action.DOWNLOAD_ERROR";
-    public static final String EXTRA_ERROR_MESSAGE = "com.hfm.app.extra.ERROR_MESSAGE";
+    public static final String ACTION_DOWNLOAD_ERROR = "com.vineyard.hfm.app.action.DOWNLOAD_ERROR";
+    public static final String EXTRA_ERROR_MESSAGE = "com.vineyard.hfm.app.extra.ERROR_MESSAGE";
 
     private FirebaseFirestore db;
     // requestListener and dropRequestId removed from here to support multiple files simultaneously

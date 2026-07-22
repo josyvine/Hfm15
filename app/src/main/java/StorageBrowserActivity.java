@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -213,7 +213,7 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
         deleteButton.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                        if (com.hfm.app.ClipboardManager.getInstance().hasItems()) {
+                                        if (com.vineyard.hfm.app.ClipboardManager.getInstance().hasItems()) {
                                                 updateFooterUI();
                                         } else {
                                                 showFileOperationsDialog();
@@ -255,7 +255,7 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
         cancelPasteButton.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                        com.hfm.app.ClipboardManager.getInstance().clear();
+                                        com.vineyard.hfm.app.ClipboardManager.getInstance().clear();
                                         updateFooterUI();
                                         Toast.makeText(StorageBrowserActivity.this, "Operation cancelled.", Toast.LENGTH_SHORT).show();
                                 }
@@ -432,7 +432,7 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
         copyButton.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                        com.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.hfm.app.ClipboardManager.Operation.COPY);
+                                        com.vineyard.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.vineyard.hfm.app.ClipboardManager.Operation.COPY);
                                         Toast.makeText(StorageBrowserActivity.this, selectedFiles.size() + " item(s) ready to copy.", Toast.LENGTH_SHORT).show();
                                         updateFooterUI();
                                         dialog.dismiss();
@@ -442,7 +442,7 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
         moveButton.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                        com.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.hfm.app.ClipboardManager.Operation.MOVE);
+                                        com.vineyard.hfm.app.ClipboardManager.getInstance().setItems(selectedFiles, com.vineyard.hfm.app.ClipboardManager.Operation.MOVE);
                                         Toast.makeText(StorageBrowserActivity.this, selectedFiles.size() + " item(s) ready to move.", Toast.LENGTH_SHORT).show();
                                         updateFooterUI();
                                         dialog.dismiss();
@@ -503,12 +503,12 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
                             Toast.makeText(StorageBrowserActivity.this, "Compression started in background.", Toast.LENGTH_SHORT).show();
                             break;
                                                 case 2: // Copy
-                                                        com.hfm.app.ClipboardManager.getInstance().setItems(folderList, com.hfm.app.ClipboardManager.Operation.COPY);
+                                                        com.vineyard.hfm.app.ClipboardManager.getInstance().setItems(folderList, com.vineyard.hfm.app.ClipboardManager.Operation.COPY);
                                                         Toast.makeText(StorageBrowserActivity.this, "Folder '" + folder.getName() + "' ready to copy.", Toast.LENGTH_SHORT).show();
                                                         updateFooterUI();
                                                         break;
                                                 case 3: // Move
-                                                        com.hfm.app.ClipboardManager.getInstance().setItems(folderList, com.hfm.app.ClipboardManager.Operation.MOVE);
+                                                        com.vineyard.hfm.app.ClipboardManager.getInstance().setItems(folderList, com.vineyard.hfm.app.ClipboardManager.Operation.MOVE);
                                                         Toast.makeText(StorageBrowserActivity.this, "Folder '" + folder.getName() + "' ready to move.", Toast.LENGTH_SHORT).show();
                                                         updateFooterUI();
                                                         break;
@@ -1253,7 +1253,7 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
     }
 
     private void updateFooterUI() {
-        boolean hasItems = com.hfm.app.ClipboardManager.getInstance().hasItems();
+        boolean hasItems = com.vineyard.hfm.app.ClipboardManager.getInstance().hasItems();
         findViewById(R.id.footer_controls_browser).setVisibility(hasItems ? View.GONE : View.VISIBLE);
         pasteControlsLayout.setVisibility(hasItems ? View.VISIBLE : View.GONE);
     }
@@ -1271,8 +1271,8 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
             return;
         }
 
-        List<File> filesToOperate = com.hfm.app.ClipboardManager.getInstance().getItems();
-        com.hfm.app.ClipboardManager.Operation operation = com.hfm.app.ClipboardManager.getInstance().getOperation();
+        List<File> filesToOperate = com.vineyard.hfm.app.ClipboardManager.getInstance().getItems();
+        com.vineyard.hfm.app.ClipboardManager.Operation operation = com.vineyard.hfm.app.ClipboardManager.getInstance().getOperation();
 
         if (!destination.isDirectory()) {
             Toast.makeText(this, "Destination is not a valid folder.", Toast.LENGTH_SHORT).show();
@@ -1286,7 +1286,7 @@ public class StorageBrowserActivity extends Activity implements StorageBrowserAd
         serviceIntent.putExtra(FileOperationService.EXTRA_OPERATION_TYPE, operation);
         ContextCompat.startForegroundService(this, serviceIntent);
 
-        com.hfm.app.ClipboardManager.getInstance().clear();
+        com.vineyard.hfm.app.ClipboardManager.getInstance().clear();
         updateFooterUI();
     }
 

@@ -297,7 +297,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.hfm.app.provider"
+            android:authorities="com.vineyard.hfm.app.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

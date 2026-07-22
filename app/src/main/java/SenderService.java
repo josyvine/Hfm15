@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -46,7 +46,7 @@ public class SenderService extends Service {
     private static final String NOTIFICATION_CHANNEL_ID = "SenderServiceChannel";
     private static final int NOTIFICATION_ID = 1001;
 
-    public static final String ACTION_START_SEND = "com.hfm.app.action.START_SEND";
+    public static final String ACTION_START_SEND = "com.vineyard.hfm.app.action.START_SEND";
     public static final String EXTRA_FILE_PATH = "file_path";
     public static final String EXTRA_RECEIVER_USERNAME = "receiver_username";
     public static final String EXTRA_SECRET_NUMBER = "secret_number";

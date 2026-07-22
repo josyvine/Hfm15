@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -32,12 +32,12 @@ public class DeleteService extends Service {
     private static final String TAG = "DeleteService";
     
     // Broadcast constants for the Monitor Popup
-    public static final String ACTION_DELETE_LOG = "com.hfm.app.action.DELETE_LOG";
+    public static final String ACTION_DELETE_LOG = "com.vineyard.hfm.app.action.DELETE_LOG";
     public static final String EXTRA_LOG_MESSAGE = "extra_log_message";
 
-    public static final String ACTION_DELETE_COMPLETE = "com.hfm.app.action.DELETE_COMPLETE";
-    public static final String EXTRA_FILES_TO_DELETE = "com.hfm.app.extra.FILES_TO_DELETE";
-    public static final String EXTRA_DELETED_COUNT = "com.hfm.app.extra.DELETED_COUNT";
+    public static final String ACTION_DELETE_COMPLETE = "com.vineyard.hfm.app.action.DELETE_COMPLETE";
+    public static final String EXTRA_FILES_TO_DELETE = "com.vineyard.hfm.app.extra.FILES_TO_DELETE";
+    public static final String EXTRA_DELETED_COUNT = "com.vineyard.hfm.app.extra.DELETED_COUNT";
 
     private static final String NOTIFICATION_CHANNEL_ID = "DeleteServiceChannel";
     private static final int FOREGROUND_ID = 9999; 

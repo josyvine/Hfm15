@@ -1,4 +1,4 @@
-package com.hfm.app;
+package com.vineyard.hfm.app;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -38,9 +38,9 @@ public class CompressionService extends Service {
     private static final String CHANNEL_ID = "CompressionChannel";
     private static final int NOTIFICATION_ID = 4;
 
-    public static final String ACTION_START_COMPRESSION = "com.hfm.app.action.START_COMPRESSION";
-    public static final String ACTION_STOP_COMPRESSION = "com.hfm.app.action.STOP_COMPRESSION";
-    public static final String ACTION_COMPRESSION_COMPLETE = "com.hfm.app.action.COMPRESSION_COMPLETE";
+    public static final String ACTION_START_COMPRESSION = "com.vineyard.hfm.app.action.START_COMPRESSION";
+    public static final String ACTION_STOP_COMPRESSION = "com.vineyard.hfm.app.action.STOP_COMPRESSION";
+    public static final String ACTION_COMPRESSION_COMPLETE = "com.vineyard.hfm.app.action.COMPRESSION_COMPLETE";
 
     public static final String EXTRA_SOURCE_FILES = "source_files";
     public static final String EXTRA_DESTINATION_DIR = "destination_dir";
